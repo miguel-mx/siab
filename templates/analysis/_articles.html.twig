@@ -1,0 +1,196 @@
+{# Per-article breakdown; each row expands to the individual citing works. #}
+<section class="card shadow-sm" id="articulos">
+    <div class="card-header">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h2 class="h6 mb-0">
+                Artículos
+                <span class="text-body-secondary fw-normal">
+                    {%- if article_search %} · {{ article_count }} de {{ article_total }}
+                    {%- else %} · {{ article_count }}{% endif -%}
+                </span>
+            </h2>
+            {% if article_pages > 1 %}
+                <span class="small text-body-secondary">página {{ article_page }} de {{ article_pages }}</span>
+            {% endif %}
+        </div>
+
+        {# The A/B/AUTO key now lives with the rows it explains: the per-row figures
+           carry colour, so the reading of that colour belongs in the same card. #}
+        <div class="mb-2">{{ include('_legend.html.twig', {compact: true}) }}</div>
+
+        {# GET, and without `art`: changing the search or the order starts at page 1,
+           because page 4 of the old result set means nothing in the new one. #}
+        <form method="get" action="{{ path('app_run_show', {slug: run.slug}) }}#articulos" class="row g-2 align-items-center">
+            <div class="col-12 col-sm">
+                <input type="search" name="buscar" value="{{ article_search }}" class="form-control form-control-sm"
+                       placeholder="Buscar por título, revista o DOI…" aria-label="Buscar artículo">
+            </div>
+            <div class="col-auto">
+                <select name="orden" class="form-select form-select-sm" aria-label="Ordenar artículos">
+                    {% for case in enum_cases('App\\Enum\\ArticleSort') %}
+                        <option value="{{ case.value }}" {{ article_sort == case ? 'selected' }}>{{ case.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Aplicar</button>
+            </div>
+            {% if article_search or article_sort.value != 'citas' %}
+                <div class="col-auto">
+                    <a class="btn btn-sm btn-link" href="{{ path('app_run_show', {slug: run.slug}) }}#articulos">Limpiar</a>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="artlist">
+        {% for article in articles %}
+            {% set counted = article.citesTypeA + article.citesTypeB + article.citesSelf %}
+            {# OpenAlex titles carry inline markup (<i>P</i>); strip it rather than
+               trusting remote HTML, which would have to be rendered unescaped. #}
+            {% set title = article.title|striptags %}
+            <article class="artrow">
+                <div>
+                    <div>
+                        {# The stored DOI may already carry the resolver prefix; doi_url
+                           builds the link from either shape. #}
+                        {% set doi_link = article.doi|doi_url %}
+                        {% if doi_link %}
+                            <a class="art-title" href="{{ doi_link }}" target="_blank" rel="noopener">{{ title }}</a>
+                        {% else %}
+                            <span class="art-title">{{ title }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="art-meta">
+                        {{ article.year ?? 's/f' }}{% if article.journal %} · <span class="journal">{{ article.journal }}</span>{% endif %}
+                        {% if article.openalexId %} · <span class="oaid">{{ article.openalexId }}</span>{% endif %}
+                    </div>
+
+                    {# Stored as one semicolon-separated string (the citing works keep a
+                       JSON array instead), so it has to be split before it can be cut
+                       to the first three. Trimmed and emptied-out defensively: the
+                       separator is "; " today but nothing enforces the space. #}
+                    {% set authors = article.authors|default('')|striptags|split(';')|map(a => a|trim)|filter(a => a != '') %}
+                    <div class="art-authors"{% if authors|length > 3 %} title="{{ article.authors|striptags }}"{% endif %}>
+                        {%- if authors is empty -%}
+                            Sin autores registrados
+                        {%- else -%}
+                            {{ authors|slice(0, 3)|join('; ') }}{% if authors|length > 3 %} et al.{% endif %}
+                        {%- endif -%}
+                    </div>
+
+                    {# Which sources hold this work, each linking to its record. An
+                       absent badge is information too: it says that source has no
+                       entry for this paper, which is how coverage gaps show up. #}
+                    <div class="art-tags">
+                        {% set links = {
+                            'openalex': article.openalexId ? 'https://openalex.org/' ~ article.openalexId : null,
+                            'scopus':   article.scopusEid ? 'https://www.scopus.com/record/display.uri?eid=' ~ article.scopusEid ~ '&origin=resultslist' : null,
+                            'zbmath':   article.zbmathId ? 'https://zbmath.org/?q=an:' ~ article.zbmathId : null,
+                            'wos':      article.wosUid ? 'https://www.webofscience.com/wos/woscc/full-record/' ~ article.wosUid : null,
+                            'inspire':  article.inspireRecid ? 'https://inspirehep.net/literature/' ~ article.inspireRecid : null,
+                        } %}
+                        {% set labels = {'openalex': 'OpenAlex', 'scopus': 'Scopus', 'zbmath': 'zbMATH', 'wos': 'WoS', 'inspire': 'INSPIRE'} %}
+
+                        {% for source in article.sourcesPresent %}
+                            {% if links[source] %}
+                                <a class="srcbadge" href="{{ links[source] }}"
+                                   target="_blank" rel="noopener"
+                                   title="Ver el registro en {{ labels[source] }}">{{ labels[source] }}</a>
+                            {% else %}
+                                <span class="srcbadge">{{ labels[source] }}</span>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% set citas = citing_counts[article.id]|default(0) %}
+                        {% if citas > 0 %}
+                            {# Fetched on first open rather than shipped with the page. #}
+                            <details data-citas-url="{{ path('app_run_article_citations', {slug: run.slug, id: article.id}) }}">
+                                <summary class="expander">
+                                    <svg class="chev" width="10" height="10" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                        <path d="M5.5 2.5 11 8l-5.5 5.5-1-1L9 8 4.5 3.5z"/>
+                                    </svg>
+                                    Ver {{ citas }} {{ citas == 1 ? 'cita' : 'citas' }}
+                                </summary>
+                                <div data-citas-slot>
+                                    {# Works without JavaScript too: the link renders the same list on its own page. #}
+                                    <a class="small" href="{{ path('app_run_article_citations', {slug: run.slug, id: article.id}) }}">Cargar las citas</a>
+                                </div>
+                            </details>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="artrow-metrics">
+                    {# The analysed count leads: A + B + autocitas add up to *this*
+                       number, not to what OpenAlex reports. Showing OpenAlex's
+                       figure first read as "0 (86)" on works whose citations came
+                       from zbMATH — the row contradicting itself. #}
+                    <div class="metric-num">{{ counted }}</div>
+                    <div class="metric-lbl" title="Citas recuperadas y clasificadas. A + B + autocitas suman esta cifra.">citas analizadas</div>
+
+                    {% if counted > 0 %}
+                        <div class="splitbar" role="img"
+                             aria-label="Tipo A {{ article.citesTypeA }}, Tipo B {{ article.citesTypeB }}, autocitas {{ article.citesSelf }}">
+                            {% for part in [
+                                {value: article.citesTypeA, class: 'bg-type-a'},
+                                {value: article.citesTypeB, class: 'bg-type-b'},
+                                {value: article.citesSelf, class: 'bg-type-self'},
+                            ] %}
+                                {% if part.value > 0 %}
+                                    <span class="{{ part.class }}" style="width: {{ (part.value / counted * 100)|round(2) }}%"></span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="metric-split">
+                        <span class="text-type-a"><span class="k">A</span> <span class="n">{{ article.citesTypeA }}</span></span>
+                        <span class="text-type-b"><span class="k">B</span> <span class="n">{{ article.citesTypeB }}</span></span>
+                        <span class="text-type-self"><span class="k">AUTO</span> <span class="n">{{ article.citesSelf }}</span></span>
+                    </div>
+
+                    {% if counted != article.openalexCitedByCount %}
+                        <div class="metric-oa"
+                             title="Lo que OpenAlex reporta para esta obra. Las analizadas pueden ser más —se fusionan varias fuentes— o menos si la recuperación se quedó corta, lo que el motor avisa.">
+                            OpenAlex: {{ article.openalexCitedByCount }}
+                        </div>
+                    {% endif %}
+                </div>
+            </article>
+        {% else %}
+            <div class="text-center text-body-secondary py-5">
+                {% if article_search %}
+                    Ningún artículo de este análisis coincide con «{{ article_search }}».
+                    <a href="{{ path('app_run_show', {slug: run.slug}) }}#articulos">Ver todos</a>.
+                {% else %}
+                    Este análisis no registró artículos.
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if article_pages > 1 %}
+        <div class="card-footer d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span class="small text-body-secondary">
+                Mostrando {{ articles|length }} de {{ article_count }} artículos.
+            </span>
+            {# The page lives in ?art= so it never collides with the history's ?p=,
+               and the anchor keeps the jump at the table instead of the top. #}
+            <nav aria-label="Paginación de artículos">
+                <ul class="pagination pagination-sm mb-0">
+                    {% set filtros = {slug: run.slug, buscar: article_search ?: null, orden: article_sort.value} %}
+                    <li class="page-item {{ article_page <= 1 ? 'disabled' }}">
+                        <a class="page-link" href="{{ path('app_run_show', filtros|merge({art: article_page - 1})) }}#articulos">‹</a>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">{{ article_page }} / {{ article_pages }}</span>
+                    </li>
+                    <li class="page-item {{ article_page >= article_pages ? 'disabled' }}">
+                        <a class="page-link" href="{{ path('app_run_show', filtros|merge({art: article_page + 1})) }}#articulos">›</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    {% endif %}
+</section>

@@ -5,27 +5,69 @@ security:
 
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
-        users_in_memory: { memory: null }
+        app_users:
+            entity:
+                class: App\Entity\User
+                property: email
 
     firewalls:
         dev:
-            # Ensure dev tools and static assets are always allowed
-            pattern: ^/(_profiler|_wdt|assets|build)/
+            # Ensure dev tools and static assets are always allowed.
+            # _error is the preview for the pages in templates/bundles/TwigBundle/
+            # Exception (/_error/404, /_error/500…). Its routes are declared under
+            # when@dev in config/routes/framework.yaml, so in prod these paths have
+            # no route at all and simply 404 — listing them here changes nothing there.
+            pattern: ^/(_profiler|_wdt|_error|assets|build)/
             security: false
         main:
             lazy: true
-            provider: users_in_memory
+            provider: app_users
+            # Rejects deactivated accounts on every request, not just at login.
+            user_checker: App\Security\UserChecker
 
-            # Activate different ways to authenticate:
-            # https://symfony.com/doc/current/security.html#the-firewall
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                username_parameter: email
+                password_parameter: password
+                enable_csrf: true
+                default_target_path: app_dashboard
+            logout:
+                path: app_logout
+                target: app_login
+                enable_csrf: true
 
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
+            # "Mantener sesión iniciada" on the login form. Opt-in per login
+            # (always_remember_me stays false), and tightened from the defaults
+            # because this cookie re-authenticates into SECIHTI evaluation figures:
+            #   lifetime  — one week, not the default year.
+            #   secure    — HTTPS-only wherever the request is HTTPS; still usable
+            #               over plain HTTP on localhost during development.
+            #   samesite  — lax, so the cookie is not sent on cross-site POSTs.
+            # signature_properties defaults to [password], so changing a user's
+            # password invalidates every remember-me cookie they were issued.
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 604800
+                path: /
+                secure: auto
+                samesite: lax
+                # Persistent tokens, not the default signature-based ones. With
+                # signatures the cookie is self-validating, so logging out only
+                # deletes it from that browser — a copy taken beforehand keeps
+                # working until it expires (verified: it authenticated after logout).
+                # A stored token can be deleted, which makes "cerrar sesión" mean it.
+                token_provider:
+                    doctrine: true
 
     # Note: Only the *first* matching rule is applied
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        # Everything is behind the login: the panel exposes citation figures that
+        # feed SECIHTI evaluations, so the login form is the only public page.
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+        # Engine configuration and account management. Must precede the ^/ rule.
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/, roles: ROLE_USER }
 
 when@test:
     security:

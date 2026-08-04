@@ -1,0 +1,13 @@
+# Markdown rendering for the narrative reports (AnalysisRun.report).
+#
+# The stored value is whatever the model wrote — Markdown — and it is converted to
+# HTML at display time so the database keeps the model's exact output.
+#
+# The prose is machine-generated from OpenAlex titles, so it is not trusted input:
+# raw HTML is stripped and unsafe link schemes (javascript:, data:) are dropped, so
+# nothing in a paper title can turn into markup on the page.
+twig_extra:
+    commonmark:
+        html_input: strip
+        allow_unsafe_links: false
+        max_nesting_level: 20

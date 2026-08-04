@@ -1,3 +1,560 @@
-body {
-    background-color: skyblue;
+/*
+ * SIAB layer on top of Bootstrap 5.3. Bootstrap does the components, grid and
+ * light/dark (via [data-bs-theme]); this file only adds what the citation domain
+ * needs — the Type A / Type B / self-citation colour language and a few display
+ * touches carried over from the approved mockup.
+ */
+
+:root {
+  --siab-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
 }
+
+/*
+ * Colour carries meaning here, never decoration: one accent (which is also the
+ * Type A blue, because links and "citas externas" are the two things worth
+ * clicking through) plus the three fixed citation-type hues. Everything else is
+ * neutral ink. Each type has three roles — `ink` for text, `mark` for the dot or
+ * bar that has no text to carry contrast, `tint` for chip backgrounds.
+ *
+ * Bootstrap's own variables are re-pointed in the same blocks: the previous
+ * palette left the whole app in one low-contrast grey band, and lifting it at
+ * the token level fixes every component at once instead of per screen.
+ */
+:root, [data-bs-theme="light"] {
+  --siab-a-ink: #1d4ed8;
+  --siab-a-mark: #3b82f6;
+  --siab-a-tint: #eff6ff;
+  --siab-b-ink: #0f766e;
+  --siab-b-mark: #14b8a6;
+  --siab-b-tint: #f0fdfa;
+  --siab-self-ink: #6b7280;
+  --siab-self-mark: #9ca3af;
+  --siab-self-tint: #f3f4f6;
+
+  --siab-row-hover: #f6f8fb;
+
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #1f2937;
+  --bs-emphasis-color: #0f172a;
+  --bs-emphasis-color-rgb: 15, 23, 42;
+  --bs-heading-color: #0f172a;
+  --bs-secondary-color: #6b7280;
+  --bs-secondary-bg: #e9edf3;
+  --bs-tertiary-bg: #f1f3f7;
+  --bs-border-color: #dfe3ea;
+  --bs-primary: var(--siab-a-ink);
+  --bs-primary-rgb: 29, 78, 216;
+  --bs-link-color: var(--siab-a-ink);
+  --bs-link-color-rgb: 29, 78, 216;
+  --bs-link-hover-color: #1e3a8a;
+  --bs-link-hover-color-rgb: 30, 58, 138;
+  /* Bootstrap's #198754 / #dc3545 land at ~4.0:1 on white — under AA for the 13px
+     service-state labels that are the main thing wearing them. */
+  --bs-success: #15803d;
+  --bs-success-rgb: 21, 128, 61;
+  --bs-danger: #b91c1c;
+  --bs-danger-rgb: 185, 28, 28;
+}
+
+[data-bs-theme="dark"] {
+  --siab-a-ink: #60a5fa;
+  --siab-a-mark: #3b82f6;
+  --siab-a-tint: rgba(59, 130, 246, .16);
+  --siab-b-ink: #2dd4bf;
+  --siab-b-mark: #14b8a6;
+  --siab-b-tint: rgba(20, 184, 166, .16);
+  --siab-self-ink: #9ca3af;
+  --siab-self-mark: #6b7280;
+  --siab-self-tint: rgba(156, 163, 175, .14);
+
+  --siab-row-hover: #161b24;
+
+  /* Near-black page, cards a step lighter — the separation the flat #212529 lacked. */
+  --bs-body-bg: #0f1319;
+  --bs-body-color: #d4dae5;
+  --bs-emphasis-color: #f8fafc;
+  --bs-emphasis-color-rgb: 248, 250, 252;
+  --bs-heading-color: #f1f5f9;
+  --bs-secondary-color: #8b93a3;
+  --bs-secondary-bg: #1c222c;
+  --bs-tertiary-bg: #0a0d12;
+  --bs-border-color: #262d3a;
+  --bs-border-color-translucent: rgba(255, 255, 255, .09);
+  --bs-primary: var(--siab-a-ink);
+  --bs-primary-rgb: 96, 165, 250;
+  --bs-link-color: var(--siab-a-ink);
+  --bs-link-color-rgb: 96, 165, 250;
+  --bs-link-hover-color: #93c5fd;
+  --bs-link-hover-color-rgb: 147, 197, 253;
+  /* Bootstrap leaves these at their light-mode values in dark, where they fall to
+     ~3:1 against the page. */
+  --bs-success: #34d399;
+  --bs-success-rgb: 52, 211, 153;
+  --bs-danger: #f87171;
+  --bs-danger-rgb: 248, 113, 113;
+  --bs-warning: #fbbf24;
+  --bs-warning-rgb: 251, 191, 36;
+}
+
+/* The accent is a compiled literal in .btn-primary, so it needs saying again. */
+.btn-primary {
+  --bs-btn-bg: var(--siab-a-ink);
+  --bs-btn-border-color: var(--siab-a-ink);
+  --bs-btn-hover-bg: var(--bs-link-hover-color);
+  --bs-btn-hover-border-color: var(--bs-link-hover-color);
+  --bs-btn-active-bg: var(--bs-link-hover-color);
+  --bs-btn-active-border-color: var(--bs-link-hover-color);
+  --bs-btn-disabled-bg: var(--siab-a-ink);
+  --bs-btn-disabled-border-color: var(--siab-a-ink);
+}
+[data-bs-theme="dark"] .btn-primary { --bs-btn-color: #0b1020; --bs-btn-hover-color: #0b1020; --bs-btn-active-color: #0b1020; }
+
+/* Same reason as .btn-primary: outline variants bake their colour in at build
+   time, so "Probar clave" and "Buscar y analizar" were still wearing Bootstrap's
+   #0d6efd next to the accent — two blues, one meaning. */
+.btn-outline-primary {
+  --bs-btn-color: var(--siab-a-ink);
+  --bs-btn-border-color: var(--siab-a-ink);
+  --bs-btn-hover-bg: var(--siab-a-ink);
+  --bs-btn-hover-border-color: var(--siab-a-ink);
+  --bs-btn-active-bg: var(--bs-link-hover-color);
+  --bs-btn-active-border-color: var(--bs-link-hover-color);
+  --bs-btn-disabled-color: var(--siab-a-ink);
+  --bs-btn-disabled-border-color: var(--siab-a-ink);
+}
+[data-bs-theme="dark"] .btn-outline-primary { --bs-btn-hover-color: #0b1020; --bs-btn-active-color: #0b1020; }
+
+/* Destructive and confirming outlines follow the theme-corrected status colours. */
+.btn-outline-danger {
+  --bs-btn-color: var(--bs-danger);
+  --bs-btn-border-color: var(--bs-danger);
+  --bs-btn-hover-bg: var(--bs-danger);
+  --bs-btn-hover-border-color: var(--bs-danger);
+  --bs-btn-active-bg: var(--bs-danger);
+  --bs-btn-active-border-color: var(--bs-danger);
+  --bs-btn-disabled-color: var(--bs-danger);
+  --bs-btn-disabled-border-color: var(--bs-danger);
+}
+.btn-outline-success {
+  --bs-btn-color: var(--bs-success);
+  --bs-btn-border-color: var(--bs-success);
+  --bs-btn-hover-bg: var(--bs-success);
+  --bs-btn-hover-border-color: var(--bs-success);
+  --bs-btn-active-bg: var(--bs-success);
+  --bs-btn-active-border-color: var(--bs-success);
+  --bs-btn-disabled-color: var(--bs-success);
+  --bs-btn-disabled-border-color: var(--bs-success);
+}
+[data-bs-theme="dark"] .btn-outline-danger,
+[data-bs-theme="dark"] .btn-outline-success {
+  --bs-btn-hover-color: #0b1020; --bs-btn-active-color: #0b1020;
+}
+
+/* The secondary button is the app's ghost affordance — "Ver", "Abrir", "Volver al
+   panel", the theme toggle. Bootstrap compiles it to a fixed #6c757d that reads at
+   ~3:1 on the dark page; routing it through the theme's own ink fixes both modes. */
+.btn-outline-secondary {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-emphasis-color);
+  --bs-btn-hover-bg: var(--bs-secondary-bg);
+  --bs-btn-hover-border-color: var(--bs-secondary-color);
+  --bs-btn-active-color: var(--bs-emphasis-color);
+  --bs-btn-active-bg: var(--bs-secondary-bg);
+  --bs-btn-active-border-color: var(--bs-secondary-color);
+  --bs-btn-disabled-color: var(--bs-secondary-color);
+  --bs-btn-disabled-border-color: var(--bs-border-color);
+}
+
+/* Bootstrap only rings form controls; rows here are full of plain links. */
+a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--siab-a-mark); outline-offset: 2px; border-radius: 3px;
+}
+
+/* ── Citation type colour language ────────────────────────────────────────── */
+.bg-type-a { background-color: var(--siab-a-mark) !important; }
+.bg-type-b { background-color: var(--siab-b-mark) !important; }
+.bg-type-self { background-color: var(--siab-self-mark) !important; }
+.text-type-a { color: var(--siab-a-ink) !important; }
+.text-type-b { color: var(--siab-b-ink) !important; }
+.text-type-self { color: var(--siab-self-ink) !important; }
+
+.swatch {
+  display: inline-block; width: .5rem; height: .5rem;
+  border-radius: 2px; margin-right: .35rem; vertical-align: baseline;
+}
+
+/* Stacked A/B/self proportion bar (Bootstrap .progress-stacked). */
+.siab-meter { height: .5rem; }
+.siab-meter.tall { height: .75rem; }
+.siab-meter--pending {
+  height: .5rem; border-radius: var(--bs-border-radius);
+  background: repeating-linear-gradient(45deg,
+    var(--bs-secondary-bg), var(--bs-secondary-bg) 5px,
+    transparent 5px, transparent 10px);
+}
+
+/* ── Display numbers (KPI tiles) ──────────────────────────────────────────────
+ * The serif display face is the brand's, kept from the approved mockup; what it
+ * lacked was the two levels around it. Label above and footnote below now sit
+ * clearly below the figure in both size and weight, and the three citation-type
+ * tiles take their type's ink — the same colour their counts carry in the rows.
+ */
+.siab-kpi-value {
+  font-family: var(--siab-display);
+  font-size: 2.1rem; line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-emphasis-color);
+}
+.siab-kpi-value small { font-size: 1rem; }
+
+.kpi-label {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--bs-secondary-color);
+  margin-bottom: .1875rem;
+}
+.kpi-foot { font-size: .75rem; color: var(--bs-secondary-color); margin-top: .5rem; }
+.kpi-share { margin-top: .625rem; }
+
+.kpi-a .siab-kpi-value { color: var(--siab-a-ink); }
+.kpi-b .siab-kpi-value { color: var(--siab-b-ink); }
+.kpi-self .siab-kpi-value { color: var(--siab-self-ink); }
+
+/* ── Record metadata: a label and its value, not one grey sentence ─────────── */
+.metastrip { display: flex; flex-wrap: wrap; gap: .875rem 2rem; }
+.metastrip-k {
+  display: block; font-size: .625rem; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--bs-secondary-color);
+}
+.metastrip-v { font-size: .8125rem; font-weight: 500; color: var(--bs-body-color); }
+.num { font-variant-numeric: tabular-nums; }
+.siab-brand { font-family: var(--siab-display); font-size: 1.25rem; letter-spacing: .01em; }
+
+.siab-spark { display: block; width: 100%; height: 34px; }
+
+/* ── Service health dots ──────────────────────────────────────────────────── */
+.status-dot {
+  display: inline-block; width: .5rem; height: .5rem; border-radius: 50%;
+  flex: none; background: var(--bs-secondary-color);
+}
+.status-dot.ok { background: var(--bs-success); box-shadow: 0 0 0 3px rgba(var(--bs-success-rgb), .22); }
+.status-dot.warn { background: var(--bs-warning); box-shadow: 0 0 0 3px rgba(var(--bs-warning-rgb), .22); }
+.status-dot.down { background: var(--bs-danger); box-shadow: 0 0 0 3px rgba(var(--bs-danger-rgb), .22); }
+.status-dot.busy { background: var(--bs-primary); box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .22); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .status-dot.ok, .status-dot.warn, .status-dot.down { animation: siab-pulse 2.6s ease-in-out infinite; }
+}
+@keyframes siab-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+/* Keep in-page anchors clear of the sticky navbar. */
+#estado-servicios, #orcid, #articulos { scroll-margin-top: 5rem; }
+
+/* ── Artículos: one row, three legible levels ─────────────────────────────────
+ * Content on the left, metrics on the right. The table this replaced spread the
+ * A/B/AUTO figures across four equal columns, which made the total — the number
+ * the row exists to report — the same size as everything else.
+ */
+.artlist { list-style: none; margin: 0; padding: 0; }
+
+.artrow {
+  display: grid; grid-template-columns: minmax(0, 1fr) 8.25rem; gap: 1.25rem;
+  padding: .9375rem 1.25rem; border-top: 1px solid var(--bs-border-color);
+}
+.artrow:first-child { border-top: 0; }
+.artrow:hover { background: var(--siab-row-hover); }
+
+@media (max-width: 575.98px) {
+  .artrow { grid-template-columns: 1fr; gap: .75rem; }
+}
+
+/* Level 1 — the title anchors the row by weight, not by colour. Blue is kept for
+   real links and for the counts; spending it on every title flattened the page. */
+.art-title, .row-title {
+  font-size: .9375rem; font-weight: 600; line-height: 1.35;
+  color: var(--bs-emphasis-color); text-decoration: none;
+}
+a.art-title:hover, a.row-title:hover { color: var(--siab-a-ink); text-decoration: underline; }
+
+/* Level 2 — metadata recedes, except the journal, which readers scan for. */
+.art-meta, .row-meta { font-size: .8125rem; color: var(--bs-secondary-color); margin-top: .125rem; }
+.art-meta .journal { color: var(--bs-body-color); font-weight: 500; }
+.art-meta .oaid { font-family: var(--bs-font-monospace); font-size: .75rem; }
+
+/* Authors sit a step below the venue line: on a run for one researcher every
+   article is theirs, so what this line is really carrying is the co-authors —
+   which is what Type B is about. Quieter than the venue, above the badges. */
+.art-authors {
+  font-size: .75rem; color: var(--bs-secondary-color); margin-top: .125rem;
+}
+
+.art-tags {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: .3125rem .5rem; margin-top: .4375rem;
+}
+.art-tags > details { flex: 0 0 auto; }
+/* Open, the citing list needs the full width — so the expander takes its own line. */
+.art-tags > details[open] { flex-basis: 100%; }
+
+/* Source badges: quiet, but defined enough to tell apart at a glance. */
+.srcbadge {
+  display: inline-block; font-size: .65625rem; letter-spacing: .03em; line-height: 1.5;
+  color: var(--bs-secondary-color); text-decoration: none;
+  border: .5px solid var(--bs-border-color); border-radius: .3125rem; padding: .0625rem .375rem;
+}
+a.srcbadge:hover { color: var(--siab-a-ink); border-color: var(--siab-a-mark); }
+
+.expander {
+  display: inline-flex; align-items: center; gap: .25rem; width: fit-content;
+  font-size: .8125rem; font-weight: 500; color: var(--siab-a-ink);
+  cursor: pointer; list-style: none;
+}
+.expander::-webkit-details-marker { display: none; }
+.expander:hover { text-decoration: underline; }
+.expander .chev { transition: transform .15s ease; }
+@media (prefers-reduced-motion: reduce) { .expander .chev { transition: none; } }
+details[open] > .expander .chev { transform: rotate(90deg); }
+
+/* Level 3 — the focal metric, given real size. */
+.artrow-metrics { text-align: right; }
+.metric-num {
+  font-size: 1.625rem; font-weight: 600; line-height: 1.05;
+  font-variant-numeric: tabular-nums; color: var(--bs-emphasis-color);
+}
+.metric-lbl { font-size: .6875rem; color: var(--bs-secondary-color); }
+
+.splitbar {
+  display: flex; height: 5px; margin: .5rem 0 .375rem;
+  border-radius: 99px; overflow: hidden; background: var(--bs-secondary-bg);
+}
+.splitbar > span { display: block; }
+
+.metric-split {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4375rem;
+  font-size: .75rem; font-variant-numeric: tabular-nums;
+}
+.metric-split .n { font-weight: 700; }
+.metric-split .k { opacity: .8; }
+.metric-oa { font-size: .6875rem; color: var(--bs-secondary-color); margin-top: .25rem; }
+
+/* The breadcrumb line over every page title. Was the same four utilities plus an
+   inline letter-spacing copied onto nine screens, which is how they drifted. */
+.eyebrow {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--bs-secondary-color);
+}
+.eyebrow a { color: inherit; text-decoration: none; }
+.eyebrow a:hover { color: var(--siab-a-ink); }
+
+/* Column heads sit above the content, not beside it — small, spaced, quiet. */
+.table > thead > tr.colhead > th {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--bs-secondary-color);
+}
+
+/* A timestamp and its "hace 3 días": the same fact twice, so the exact one leads
+   and the relative one reads as its gloss rather than as a second column. */
+.stamp { font-size: .8125rem; color: var(--bs-body-color); }
+.stamp-rel { font-size: .6875rem; color: var(--bs-secondary-color); }
+
+/* Countable columns in the roster tables: a figure, not body text. */
+.cell-num {
+  font-variant-numeric: tabular-nums; font-weight: 600;
+  color: var(--bs-emphasis-color); font-size: .9375rem;
+}
+
+/* ── Citing-works list inside each article row ────────────────────────────── */
+/* Indented under a rule so the group visibly belongs to the article above it. */
+.citegroup {
+  margin: .625rem 0 .25rem; padding-left: .875rem;
+  border-left: 2px solid var(--bs-border-color);
+}
+.citegroup-head {
+  font-size: .6875rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--bs-secondary-color); margin-bottom: .5rem;
+}
+.citelist { font-size: .8125rem; }
+/* A fixed first column, not a gap: AUTO is a wider chip than A or B, and a flex
+   row would step every self-citation's title to the right of its neighbours'. */
+.citelist > li {
+  display: grid; grid-template-columns: 2.875rem minmax(0, 1fr); align-items: start;
+}
+.citelist > li + li { margin-top: .5rem; }
+.citelist .cite-title { font-weight: 500; }
+.citelist .cite-meta { display: block; font-size: .75rem; color: var(--bs-secondary-color); }
+.citelist .cite-meta .venue { color: var(--bs-body-color); font-weight: 500; }
+
+/* A/B/AUTO tag: tinted chip, letter kept so colour is never the only signal. */
+.cls {
+  justify-self: start; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.375rem; height: 1.125rem; margin-top: .0625rem;
+  font-size: .625rem; font-weight: 700; letter-spacing: .02em;
+  border: 1px solid transparent; border-radius: 99px; padding: 0 .25rem;
+}
+.cls-a { color: var(--siab-a-ink); background: var(--siab-a-tint); border-color: var(--siab-a-mark); }
+.cls-b { color: var(--siab-b-ink); background: var(--siab-b-tint); border-color: var(--siab-b-mark); }
+.cls-self { color: var(--siab-self-ink); background: var(--siab-self-tint); border-color: var(--siab-self-mark); }
+
+/* Identifier chips (ORCID / OpenAlex / Scopus). */
+.idchip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-family: var(--bs-font-monospace); font-size: .6875rem;
+  color: var(--bs-secondary-color); background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color); border-radius: .4rem; padding: .1rem .4rem;
+}
+.idchip .k {
+  font-family: var(--bs-body-font-family); font-size: .5625rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color);
+}
+a.idchip:hover { color: var(--siab-a-ink); border-color: var(--siab-a-mark); }
+
+/* ── Rendered narrative report (Markdown → HTML) ──────────────────────────── */
+.report-body { line-height: 1.65; }
+.report-body > :first-child { margin-top: 0; }
+.report-body > :last-child { margin-bottom: 0; }
+/* The model writes h2/h3 for its sections; keep them close to body scale. */
+.report-body h1 { font-size: 1.25rem; }
+.report-body h2 { font-size: 1.1rem; }
+.report-body h3, .report-body h4, .report-body h5, .report-body h6 { font-size: 1rem; }
+.report-body h1, .report-body h2, .report-body h3,
+.report-body h4, .report-body h5, .report-body h6 {
+  margin-top: 1.4rem; margin-bottom: .5rem; font-weight: 600;
+}
+.report-body ul, .report-body ol { padding-left: 1.25rem; }
+.report-body li + li { margin-top: .2rem; }
+.report-body blockquote {
+  margin: 1rem 0; padding: .25rem 0 .25rem 1rem;
+  border-left: 3px solid var(--bs-border-color); color: var(--bs-secondary-color);
+}
+.report-body code { font-size: .875em; }
+.report-body table {
+  width: 100%; margin: 1rem 0; border-collapse: collapse;
+  font-size: .875rem; font-variant-numeric: tabular-nums;
+}
+.report-body th, .report-body td {
+  padding: .4rem .6rem; border-bottom: 1px solid var(--bs-border-color); text-align: left;
+}
+.report-body th { color: var(--bs-secondary-color); font-weight: 600; }
+
+/* Screens that are designed but not built yet: visible, clearly inert. */
+.soon { opacity: .45; cursor: not-allowed; pointer-events: none; }
+
+/* ── Login: split shell ───────────────────────────────────────────────────────
+ * Layout carried over from the CCM "Control de Activos" login, restyled in SIAB's
+ * own language (serif display face, Type A blue). The form side follows the theme
+ * toggle; the hero side is dark in both, which is what makes the split read.
+ */
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Below md the hero is the first thing to go: the form is the only part you need. */
+@media (max-width: 767.98px) {
+  .login-shell { grid-template-columns: 1fr; }
+  .login-hero { display: none; }
+}
+
+.login-form-side {
+  display: flex; align-items: center; justify-content: center;
+  padding: 3rem 2.5rem;
+  background: var(--bs-body-bg);
+}
+
+.login-form { width: 100%; max-width: 380px; }
+.login-form .login-logo { height: 44px; width: auto; object-fit: contain; }
+
+/* The CCM mark is dark ink on transparent — invert it so it survives dark mode. */
+[data-bs-theme="dark"] .login-form .login-logo { filter: invert(1) brightness(1.6); }
+
+.login-title { font-family: var(--siab-display); letter-spacing: -.01em; }
+
+.input-icon-wrap { position: relative; }
+.input-icon-wrap .form-control { padding-left: 2.375rem; }
+.input-icon-wrap .lead-icon {
+  position: absolute; left: .75rem; top: 50%; transform: translateY(-50%);
+  color: var(--bs-secondary-color); pointer-events: none; display: flex;
+}
+.password-toggle {
+  position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--bs-secondary-color);
+  padding: .375rem; cursor: pointer; display: flex; border-radius: var(--bs-border-radius);
+}
+.password-toggle:hover { color: var(--bs-body-color); }
+.password-toggle:focus-visible { outline: 2px solid var(--siab-a-mark); outline-offset: 1px; }
+
+.login-meta { font-size: .72rem; color: var(--bs-secondary-color); }
+
+/* ── Login: hero side ─────────────────────────────────────────────────────── */
+.login-hero {
+  position: relative; overflow: hidden;
+  padding: 3rem;
+  display: flex; flex-direction: column; justify-content: space-between;
+  color: #fff;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, .07), transparent 60%),
+    linear-gradient(135deg, #1c3a86 0%, #1a2433 60%, #0e141f 100%);
+}
+
+/* Faint graph paper, faded out toward the edges so it never competes with the text. */
+.login-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse at 70% 30%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse at 70% 30%, #000 30%, transparent 75%);
+}
+
+.login-hero > * { position: relative; z-index: 1; }
+
+.login-watermark {
+  position: absolute; bottom: -100px; right: -100px;
+  width: 860px; height: auto; z-index: 0;
+  filter: invert(1); opacity: .12; mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.hero-brand {
+  display: inline-flex; align-items: center; gap: .625rem;
+  font-size: .84rem; font-weight: 600; color: rgba(255, 255, 255, .8);
+}
+.hero-brand-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .2);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--siab-display); font-size: .8rem; font-weight: 700; letter-spacing: .02em;
+}
+
+.hero-card {
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .12);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  padding: 1.375rem 1.5rem;
+}
+.hero-card h2 {
+  font-family: var(--siab-display);
+  font-size: 1.6rem; line-height: 1.25; letter-spacing: -.01em;
+}
+.hero-card p { opacity: .78; font-size: .875rem; line-height: 1.55; margin: 0; }
+
+.hero-pill {
+  display: inline-flex; align-items: center; gap: .375rem;
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 99px; padding: .25rem .625rem;
+  font-size: .75rem; font-weight: 500;
+}
+.hero-pill .dot {
+  width: 6px; height: 6px; border-radius: 99px;
+  background: var(--siab-b-mark); flex: none;
+}
+
+.hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.hero-stat-num {
+  font-family: var(--siab-display);
+  font-size: 1.7rem; line-height: 1.05; font-variant-numeric: tabular-nums;
+}
+.hero-stat-lbl { font-size: .75rem; opacity: .7; margin-top: .125rem; }

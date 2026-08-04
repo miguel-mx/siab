@@ -1,0 +1,20 @@
+{% extends 'bundles/TwigBundle/Exception/_error_layout.html.twig' %}
+
+{% block title %}Error interno{% endblock %}
+{% block code %}500{% endblock %}
+{% block heading %}Algo falló de nuestro lado{% endblock %}
+
+{% block body %}
+    {# No exception text, no stack trace: this page is served to anyone who can
+       reach the site, and the detail belongs in var/log, not on screen. #}
+    <p>No es culpa de lo que hiciste. El fallo quedó registrado.</p>
+    <p class="muted">
+        Vuelve a intentarlo en un momento. Si se repite, avisa a un administrador
+        e indícale qué estabas haciendo: con eso puede localizarlo en el registro
+        del servidor.
+    </p>
+    <p class="muted">
+        Un análisis que ya estuviera en marcha no se pierde por esto: sigue su
+        curso y aparecerá en el historial.
+    </p>
+{% endblock %}

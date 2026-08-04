@@ -1,0 +1,54 @@
+# Systemd unit for the Python engine (../citas-engine), for deployments where SIAB
+# runs under Apache. The engine gets its own unprivileged user: neither root (it
+# binds an unprivileged port and parses untrusted OpenAlex payloads) nor www-data
+# (a compromised web app would inherit a long-lived process, and the web user
+# would need read+execute into the engine's virtualenv).
+#
+# Install:
+#   sudo install -m 0644 deploy/citas-engine.service /etc/systemd/system/
+#   sudo useradd --system --home /opt/citas-engine --shell /usr/sbin/nologin citas
+#   sudo systemctl daemon-reload && sudo systemctl enable --now citas-engine
+#
+# Adjust User=, WorkingDirectory= and the log path to the real deployment.
+
+[Unit]
+Description=SIAB citation engine (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=citas
+Group=citas
+WorkingDirectory=/opt/citas-engine
+# --host 127.0.0.1 is not optional here: the engine has no authentication, so
+# loopback is the whole of its access control. Binding 0.0.0.0 would expose
+# /analyze and every stored result to anything that can reach the machine. SIAB
+# talks to it over loopback (CITATION_ENGINE_URL); nothing else should.
+ExecStart=/opt/citas-engine/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001
+
+# Point SIAB's ENGINE_LOG at this same file (it only needs to read it) and a
+# failed start is diagnosable from the browser instead of only through journalctl.
+# The directory must be writable by this unit's user:
+#   sudo install -d -o citas -g citas -m 0755 /var/log/citas-engine
+# Drop these two lines to keep the engine's output in journald only.
+StandardOutput=append:/var/log/citas-engine/engine.log
+StandardError=append:/var/log/citas-engine/engine.log
+
+Restart=on-failure
+RestartSec=5
+
+# The engine reads OpenAlex and writes nothing but its log.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/citas-engine
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Deliberately no IPAddressAllow=localhost: it would also cut the *outbound* calls
+# the engine exists to make (api.openalex.org, the Ollama server). Inbound is
+# already closed by binding loopback in ExecStart.
+
+[Install]
+WantedBy=multi-user.target

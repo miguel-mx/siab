@@ -1,0 +1,16 @@
+{# Fallback for every status code without a template of its own. #}
+{% extends 'bundles/TwigBundle/Exception/_error_layout.html.twig' %}
+
+{% block title %}Error {{ status_code }}{% endblock %}
+{% block code %}{{ status_code }}{% endblock %}
+{# status_text comes from Symfony in English ("I'm a teapot"), so it is not used as
+   the heading of a Spanish page — it is shown below as the technical detail it is. #}
+{% block heading %}Se produjo un error{% endblock %}
+
+{% block body %}
+    <p>La página no se pudo mostrar.{% if status_text is defined %} <span class="muted">({{ status_text }})</span>{% endif %}</p>
+    <p class="muted">
+        Si vuelve a ocurrir, avisa a un administrador indicando el código {{ status_code }}
+        y qué estabas haciendo.
+    </p>
+{% endblock %}

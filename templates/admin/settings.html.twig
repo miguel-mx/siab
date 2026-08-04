@@ -1,0 +1,64 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Configuración del motor · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">
+                <a href="{{ path('app_dashboard') }}">Panel</a> · Administración
+            </div>
+            <h1 class="siab-brand fs-3 mb-0">Configuración del motor</h1>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_users') }}">Cuentas →</a>
+    </div>
+
+    {{ include('admin/_engine_service.html.twig') }}
+
+    <div class="alert alert-info py-2 px-3 small" role="alert">
+        Estos valores viven en SIAB y viajan al motor en cada llamada: un cambio aquí
+        se aplica al siguiente análisis <b>sin reiniciar</b> el servicio Python.
+        Un campo vacío usa el valor por defecto del despliegue.
+    </div>
+
+    <form method="post" action="{{ path('app_admin_settings_save') }}">
+        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header"><h2 class="h6 mb-0">Conexión y modelo</h2></div>
+            <div class="card-body">
+                {% for row in rows|filter(r => r.key.isLive) %}
+                    {{ include('admin/_setting_field.html.twig', {row: row}) }}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h2 class="h6 mb-0">Claves de API</h2>
+                <span class="badge rounded-pill border text-body-secondary bg-body-tertiary fw-normal">
+                    Todavía sin uso
+                </span>
+            </div>
+            <div class="card-body">
+                <p class="small text-body-secondary">
+                    El motor es hoy <b>sólo OpenAlex</b>: estas claves se guardan cifradas para
+                    cuando se conecten Scopus y Web of Science, pero ninguna consulta las usa
+                    todavía. Los campos en blanco conservan la clave ya guardada.
+                </p>
+                {% for row in rows|filter(r => not r.key.isLive) %}
+                    {{ include('admin/_setting_field.html.twig', {row: row}) }}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Guardar cambios</button>
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_settings') }}">Descartar</a>
+        </div>
+    </form>
+</main>
+{% endblock %}

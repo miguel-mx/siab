@@ -1,0 +1,59 @@
+{# Engine process control. Unlike the settings below it, this is not configuration:
+   it is the one thing an administrator can do to the Python service itself. #}
+<section class="card shadow-sm mb-4">
+    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h2 class="h6 mb-0">Servicio del motor</h2>
+        <span class="d-inline-flex align-items-center gap-2 small">
+            <span class="status-dot {{ engine.status ? engine.status.state.cssClass : 'off' }}"></span>
+            {{ engine.status ? engine.status.state.label : 'Sin datos' }}
+        </span>
+    </div>
+
+    <div class="card-body">
+        {% if engine.configured %}
+            <p class="small text-body-secondary mb-3">
+                El proceso Python (uvicorn) se ejecuta fuera de SIAB. Desde aquí sólo se
+                puede <b>arrancar</b>: detenerlo o reiniciarlo sigue siendo una tarea de
+                consola, para que un clic no pueda cortar un análisis en curso.
+            </p>
+
+            <dl class="row small mb-3">
+                <dt class="col-sm-3 text-body-secondary fw-normal">Comando</dt>
+                <dd class="col-sm-9 font-monospace {{ engine.owns ? '' : 'mb-0' }}" style="overflow-wrap: anywhere;">{{ engine.command }}</dd>
+                {% if engine.owns %}
+                    <dt class="col-sm-3 text-body-secondary fw-normal">Directorio</dt>
+                    <dd class="col-sm-9 font-monospace mb-0" style="overflow-wrap: anywhere;">{{ engine.directory }}</dd>
+                {% endif %}
+            </dl>
+
+            {% if not engine.owns %}
+                <p class="small text-body-secondary">
+                    El arranque se delega al sistema: SIAB no ejecuta el motor con su propio
+                    usuario, sólo pide que se inicie. El registro completo está en
+                    <code>journalctl -u citas-engine</code>.
+                </p>
+            {% endif %}
+
+            {% if engine.status and engine.status.state.isUsable %}
+                <p class="small text-success mb-0">El motor responde; no hace falta arrancarlo.</p>
+            {% else %}
+                {{ include('_engine_start.html.twig', {volver: 'app_admin_settings', clase: 'btn btn-primary'}) }}
+            {% endif %}
+        {% else %}
+            <p class="small text-body-secondary mb-0">
+                Este despliegue no define cómo arrancar el motor. Configura
+                <code>ENGINE_START_COMMAND</code> (y <code>ENGINE_DIR</code>) en el
+                <code>.env</code> del servidor para habilitar el botón.
+            </p>
+        {% endif %}
+    </div>
+
+    {% if engine.log %}
+        <div class="card-footer">
+            <details {{ engine.status and engine.status.state.isUsable ? '' : 'open' }}>
+                <summary class="small text-body-secondary">Registro del motor (var/log/engine.log)</summary>
+                <pre class="mt-2 mb-0 p-2 bg-body-tertiary border rounded small" style="max-height: 16rem; overflow: auto;"><code>{{ engine.log }}</code></pre>
+            </details>
+        </div>
+    {% endif %}
+</section>

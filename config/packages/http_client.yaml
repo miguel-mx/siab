@@ -1,0 +1,11 @@
+framework:
+    http_client:
+        scoped_clients:
+            # Autowire with:  HttpClientInterface $citationEngineClient
+            citation_engine.client:
+                base_uri: '%env(CITATION_ENGINE_URL)%'
+                # A full /analyze pages every work + every citing work — allow minutes.
+                timeout: 600
+                max_duration: 900
+                headers:
+                    Accept: 'application/json'

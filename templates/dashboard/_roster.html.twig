@@ -1,0 +1,63 @@
+{# Researcher roster with per-researcher run stats. #}
+<section class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h2 class="h6 mb-0">Investigadores <span class="text-body-secondary fw-normal">· {{ roster_total }}</span></h2>
+        <a class="small text-decoration-none" href="{{ path('app_researcher_index') }}">Ver los {{ roster_total }} →</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr class="colhead">
+                    <th scope="col">Investigador</th>
+                    <th scope="col">Identificadores</th>
+                    <th scope="col">Análisis</th>
+                    <th scope="col">Último</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in roster %}
+                {% set researcher = row.researcher %}
+                <tr>
+                    <td>
+                        <a class="row-title" href="{{ path('app_researcher_show', {slug: researcher.slug}) }}">
+                            {{ researcher.displayName }}
+                        </a>
+                        {% if researcher.field %}<div class="row-meta">{{ researcher.field }}</div>{% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% if researcher.orcid %}<span class="idchip"><span class="k">ORCID</span>{{ researcher.orcid }}</span>{% endif %}
+                            {% if researcher.openalexId %}<span class="idchip"><span class="k">OpenAlex</span>{{ researcher.openalexId }}</span>{% endif %}
+                            {% if researcher.scopusId %}<span class="idchip"><span class="k">Scopus</span>{{ researcher.scopusId }}</span>{% endif %}
+                            {% if not researcher.orcid and not researcher.openalexId %}
+                                <span class="small text-body-secondary">sin identificadores</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td><span class="cell-num">{{ row.runs }}</span> <span class="small text-body-secondary">análisis</span></td>
+                    <td class="text-nowrap text-body-secondary small">{{ row.lastRun ? row.lastRun|fecha : '—' }}</td>
+                    <td class="text-end">
+                        {% set prefill = researcher.orcid ?? researcher.openalexId %}
+                        <a class="btn btn-sm btn-primary" href="{{ path('app_analysis_new', prefill ? {q: prefill} : {}) }}">+ Nuevo</a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-body-secondary py-5">
+                        El padrón está vacío. <a href="{{ path('app_analysis_new') }}">Analiza a alguien</a> y aparecerá aquí.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if roster_total > roster|length %}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="small text-body-secondary">Mostrando {{ roster|length }} de {{ roster_total }} investigadores</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_researcher_index') }}">Ver todos →</a>
+        </div>
+    {% endif %}
+</section>

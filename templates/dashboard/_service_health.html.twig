@@ -1,0 +1,46 @@
+{# Service panel: engine + relayed probes (OpenAlex, Ollama) + MySQL + optional sources. #}
+<section class="card shadow-sm h-100" id="estado-servicios">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h2 class="h6 mb-0">Estado de servicios</h2>
+        <a class="small text-decoration-none" href="{{ path('app_dashboard', {revisar: 1}) }}">Revisar ahora</a>
+    </div>
+
+    <ul class="list-group list-group-flush">
+        {% for service in health.services %}
+            <li class="list-group-item d-flex align-items-center gap-3">
+                <span class="status-dot {{ service.state.cssClass }}"></span>
+                <div class="flex-grow-1 min-w-0">
+                    <div class="row-title">{{ service.name }}</div>
+                    <div class="text-body-secondary font-monospace" style="font-size: .6875rem; overflow-wrap: anywhere;">
+                        {{ service.detail }}
+                    </div>
+                </div>
+                <div class="text-end">
+                    {# The state is the row's verdict, so it gets the weight — the
+                       latency beneath it is a footnote, not a peer. #}
+                    <div class="fw-semibold {{ {'ok': 'text-success', 'warn': 'text-warning-emphasis', 'down': 'text-danger', 'off': 'text-body-secondary'}[service.state.cssClass] }}"
+                         style="font-size: .8125rem;">
+                        {{ service.state.label }}
+                    </div>
+                    <div class="text-body-secondary num" style="font-size: .6875rem;">
+                        {%- if service.latencyLabel %}{{ service.latencyLabel }} · {% endif -%}
+                        {{ service.message ?: health.checkedAt|hace }}
+                    </div>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+
+    {% if health.needingAttention is not empty %}
+        <div class="card-footer small text-warning-emphasis d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                {{ health.needingAttention|length }}
+                {{ health.needingAttention|length == 1 ? 'servicio requiere atención' : 'servicios requieren atención' }}:
+                {{ health.needingAttention|map(s => s.name)|join(', ') }}.
+            </div>
+            {% if health.get('engine') and not health.get('engine').state.isUsable %}
+                {{ include('_engine_start.html.twig', {volver: 'app_dashboard', clase: 'btn btn-sm btn-outline-primary'}) }}
+            {% endif %}
+        </div>
+    {% endif %}
+</section>

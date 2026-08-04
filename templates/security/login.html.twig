@@ -1,0 +1,134 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Entrar · SIAB{% endblock %}
+
+{# No navigation to offer before signing in. The theme toggle lives in the navbar,
+   so the login has none — app.js still applies the stored/OS theme on load. #}
+{% block navbar %}{% endblock %}
+
+{% block body %}
+<div class="login-shell">
+
+    {# ── Form side ─────────────────────────────────────────────────────────── #}
+    <div class="login-form-side">
+        <div class="login-form">
+
+            <img class="login-logo mb-5" src="{{ asset('images/ccm.png') }}"
+                 alt="Centro de Ciencias Matemáticas · UNAM">
+
+            <h1 class="login-title h3 fw-semibold mb-1">Bienvenido de vuelta</h1>
+            <p class="text-body-secondary mb-4" style="font-size: .875rem;">
+                Ingresa con tu cuenta para consultar el análisis de citas.
+            </p>
+
+            {% if error %}
+                <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-4"
+                     style="font-size: .8125rem;" role="alert">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="flex-shrink-0">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0-10.5a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5A.75.75 0 0 0 8 4.5zm0 7a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z"/>
+                    </svg>
+                    <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
+                </div>
+            {% endif %}
+
+            {{ include('_flashes.html.twig') }}
+
+            <form method="post">
+                <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
+
+                <div class="mb-3">
+                    <label for="email" class="form-label fw-medium" style="font-size: .8125rem;">
+                        Correo electrónico
+                    </label>
+                    <div class="input-icon-wrap">
+                        <span class="lead-icon">
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path d="M2 3h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm.4 1.4L8 8.3l5.6-3.9V4H2.4v.4zm11.2 1.4L8.3 9.6a.5.5 0 0 1-.6 0L2.4 5.8V12h11.2V5.8z"/>
+                            </svg>
+                        </span>
+                        <input type="email" id="email" name="email" value="{{ last_email }}"
+                               class="form-control" placeholder="usuario@matmor.unam.mx"
+                               autocomplete="email" required autofocus>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label fw-medium" style="font-size: .8125rem;">
+                        Contraseña
+                    </label>
+                    <div class="input-icon-wrap">
+                        <span class="lead-icon">
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path d="M8 1a3.5 3.5 0 0 0-3.5 3.5V6H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-.5V4.5A3.5 3.5 0 0 0 8 1zm2 5H6V4.5a2 2 0 1 1 4 0V6z"/>
+                            </svg>
+                        </span>
+                        <input type="password" id="password" name="password"
+                               class="form-control" placeholder="••••••••"
+                               autocomplete="current-password" required>
+                        <button type="button" class="password-toggle"
+                                data-password-toggle="password"
+                                aria-label="Mostrar contraseña" aria-pressed="false">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path d="M8 3c3.2 0 5.9 2.1 7 5-1.1 2.9-3.8 5-7 5S2.1 10.9 1 8c1.1-2.9 3.8-5 7-5zm0 1.5A3.5 3.5 0 1 0 8 11.5 3.5 3.5 0 0 0 8 4.5zm0 1.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" id="remember_me" name="_remember_me">
+                    <label class="form-check-label" for="remember_me" style="font-size: .8125rem;">
+                        Mantener sesión iniciada en este dispositivo
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 fw-medium py-2">Entrar</button>
+            </form>
+
+            <div class="d-flex justify-content-between align-items-center gap-3 mt-5 login-meta">
+                <span>© {{ 'now'|date('Y') }} CCM · UNAM</span>
+                <span>Las cuentas las crea un administrador.</span>
+            </div>
+
+        </div>
+    </div>
+
+    {# ── Hero side ─────────────────────────────────────────────────────────── #}
+    <div class="login-hero">
+        <img class="login-watermark" src="{{ asset('images/unam.svg') }}" alt="">
+
+        <div class="hero-brand">
+            <span class="hero-brand-mark">SIAB</span>
+            <span>Sistema de análisis bibliométrico</span>
+        </div>
+
+        <div class="hero-card">
+            <div class="mb-3">
+                <span class="hero-pill"><span class="dot"></span>Datos deterministas de OpenAlex</span>
+            </div>
+            <h2 class="fw-semibold mb-3">Citas Tipo A, Tipo B y autocitas, clasificadas sin ambigüedad.</h2>
+            <p>
+                Cada cita se clasifica por coincidencia de autoría según las reglas de Rizoma
+                (SECIHTI). El modelo sólo redacta el informe a partir de cifras ya calculadas:
+                ninguna cifra bibliográfica la escribe la IA.
+            </p>
+        </div>
+
+        <div class="hero-stats">
+            <div>
+                <div class="hero-stat-num">{{ total_researchers }}</div>
+                <div class="hero-stat-lbl">{{ total_researchers == 1 ? 'Investigador' : 'Investigadores' }}</div>
+            </div>
+            <div>
+                <div class="hero-stat-num">{{ total_runs }}</div>
+                <div class="hero-stat-lbl">Análisis</div>
+            </div>
+            <div>
+                <div class="hero-stat-num">{{ total_citations }}</div>
+                <div class="hero-stat-lbl">Citas revisadas</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

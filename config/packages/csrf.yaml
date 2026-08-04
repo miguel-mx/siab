@@ -1,4 +1,13 @@
 # Enable stateless CSRF protection for forms and logins/logouts
+#
+# Every hidden _csrf_token field must carry data-controller="csrf-protection".
+# The controller that maintains the double-submit cookie is lazy-loaded, so
+# without that attribute it never runs and validation silently degrades to an
+# Origin-header check — until a session that once sent the cookie stops sending
+# it, at which point *every* POST in that session is rejected ("La solicitud
+# caducó", including logout) and only clearing the site's cookies recovers it.
+# Use the token id `submit` for new forms; anything outside the list below takes
+# the stateful path, which the same controller breaks by rewriting the field.
 framework:
     form:
         csrf_protection:

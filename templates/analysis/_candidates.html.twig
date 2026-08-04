@@ -1,0 +1,56 @@
+{# A name search matched several OpenAlex authors: the user picks the right one.
+   Params (all optional): action — route the choice posts to, label — button text,
+   pass_report — carry the report options through (only the analysis flow has them). #}
+{% set action = action|default('app_analysis_start') %}
+{% set label = label|default('Analizar') %}
+{% set pass_report = pass_report|default(true) %}
+<section class="card shadow-sm mt-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h2 class="h6 mb-0">¿Cuál de estos investigadores?</h2>
+        <span class="small text-body-secondary">{{ candidates|length }} coincidencias en OpenAlex</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr class="colhead">
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Identificadores</th>
+                    <th scope="col">Obras</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for candidate in candidates %}
+                {% set openalex_id = candidate.openalexId|replace({'https://openalex.org/': ''}) %}
+                {% set orcid = candidate.orcid ? candidate.orcid|replace({'https://orcid.org/': ''}) : null %}
+                <tr>
+                    <td><span class="row-title">{{ candidate.displayName }}</span></td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% if orcid %}<span class="idchip"><span class="k">ORCID</span>{{ orcid }}</span>{% endif %}
+                            <span class="idchip"><span class="k">OpenAlex</span>{{ openalex_id }}</span>
+                        </div>
+                    </td>
+                    <td><span class="cell-num">{{ candidate.worksCount }}</span> <span class="small text-body-secondary">obras</span></td>
+                    <td class="text-end">
+                        <form method="post" action="{{ path(action) }}">
+                            <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                            {# The ORCID is the more stable id when OpenAlex has one. #}
+                            <input type="hidden" name="author_id" value="{{ orcid ?? openalex_id }}">
+                            {% if pass_report %}
+                                <input type="hidden" name="report_language" value="{{ input.reportLanguage }}">
+                                {% if input.wantReport %}<input type="hidden" name="want_report" value="1">{% endif %}
+                                {% for value in input.sources|default([]) %}
+                                    <input type="hidden" name="sources[]" value="{{ value }}">
+                                {% endfor %}
+                            {% endif %}
+                            <button class="btn btn-sm btn-primary" type="submit">{{ label }}</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>

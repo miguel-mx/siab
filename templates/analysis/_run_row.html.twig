@@ -1,0 +1,80 @@
+{# One run as a table row, shared by the dashboard's "Análisis recientes" and the
+   full history screen. Params: run (AnalysisRun), show_report (bool, default false —
+   the history screen has room for the informe column, the dashboard card does not). #}
+{% set total = run.totalCitations %}
+<tr>
+    <td>
+        <a class="row-title" href="{{ path('app_run_show', {slug: run.slug}) }}">
+            {{ run.researcher.displayName }}
+        </a>
+        <div class="row-meta">
+            <a class="text-decoration-none text-body-secondary" href="{{ path('app_researcher_show', {slug: run.researcher.slug}) }}">ficha</a>
+            · {{ run.researcher.worksCount ?? run.totalArticles }} obras · {{ run.sourceLabels|join(', ') }}
+        </div>
+    </td>
+    <td class="text-nowrap text-body-secondary small">{{ run.createdAt|fecha }}</td>
+    <td>
+        <div class="d-flex flex-wrap align-items-center gap-1">
+            {{ include('_run_status.html.twig', {status: run.status, flags: run.flags}) }}
+            {# Archived is not a run status — the analysis is still "Completo" — so it
+               rides alongside the chip rather than replacing it. Without this the
+               archived list looked like the ordinary one. #}
+            {% if run.archived %}
+                <span class="badge rounded-pill border text-body-secondary bg-body-tertiary fw-normal"
+                      title="Archivado el {{ run.discardedAt|fecha('d MMM y, HH:mm') }}: fuera del historial y de las cifras del panel.">
+                    Archivado
+                </span>
+            {% endif %}
+        </div>
+    </td>
+    <td>
+        {% if run.status.hasFigures and total > 0 %}
+            {{ include('_meter.html.twig', {run: run, total: total}) }}
+            {# Same counts, same inks, same order as everywhere else in the app. #}
+            <div class="metric-split justify-content-start mt-1">
+                <span class="text-type-a"><span class="k">A</span> <span class="n">{{ run.totalTypeA }}</span></span>
+                <span class="text-type-b"><span class="k">B</span> <span class="n">{{ run.totalTypeB }}</span></span>
+                <span class="text-type-self"><span class="k">AUTO</span> <span class="n">{{ run.totalSelf }}</span></span>
+                {% if run.flags %}
+                    <span class="text-warning-emphasis">· {{ run.flags|length }} {{ run.flags|length == 1 ? 'aviso' : 'avisos' }}</span>
+                {% endif %}
+            </div>
+        {% elseif run.status == constant('App\\Enum\\RunStatus::FAILED') %}
+            <div class="siab-meter--pending" title="{{ run.errorMessage }}"></div>
+            {% set reason = run.errorMessage|default('Error desconocido') %}
+            <div class="small text-danger-emphasis mt-1">{{ reason|slice(0, 70) }}{{ reason|length > 70 ? '…' }}</div>
+        {% elseif run.status == constant('App\\Enum\\RunStatus::CANCELED') %}
+            <div class="siab-meter--pending" title="{{ run.errorMessage }}"></div>
+            <div class="small text-body-secondary mt-1">{{ run.errorMessage|default('Cancelado') }}</div>
+        {% else %}
+            <div class="siab-meter--pending" title="En proceso"></div>
+            <div class="small mt-1 {{ run.stalled ? 'text-warning-emphasis' : 'text-body-secondary' }}">
+                {% if run.stalled %}
+                    Sin avanzar desde {{ run.startedAt|hace }} — probablemente atascado
+                {% else %}
+                    {{ run.status == constant('App\\Enum\\RunStatus::QUEUED') ? 'En cola…' : 'Recuperando citas…' }}
+                {% endif %}
+            </div>
+        {% endif %}
+    </td>
+
+    {% if show_report|default(false) %}
+        <td class="small text-nowrap">
+            {% if run.report %}
+                <a class="text-decoration-none" href="{{ path('app_run_show', {slug: run.slug}) }}#informe">
+                    Informe ({{ run.reportLanguage }})
+                </a>
+            {% elseif run.reportPending %}
+                <span class="text-body-secondary">Redactando…</span>
+            {% elseif run.reportError %}
+                <span class="text-danger-emphasis" title="{{ run.reportError }}">Falló</span>
+            {% else %}
+                <span class="text-body-secondary">—</span>
+            {% endif %}
+        </td>
+    {% endif %}
+
+    <td class="text-end">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_run_show', {slug: run.slug}) }}">Ver</a>
+    </td>
+</tr>

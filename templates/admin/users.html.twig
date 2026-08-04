@@ -1,0 +1,185 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Cuentas · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">
+                <a href="{{ path('app_dashboard') }}">Panel</a> · Administración
+            </div>
+            <h1 class="siab-brand fs-3 mb-0">Cuentas <span class="text-body-secondary fs-5">· {{ users|length }}</span></h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_audit', {tipo: 'user'}) }}">Registro →</a>
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_settings') }}">Configuración del motor →</a>
+        </div>
+    </div>
+
+    {% if active_admins == 1 %}
+        <div class="alert alert-warning py-2 px-3 small" role="alert">
+            Sólo hay <b>un administrador activo</b>. Nombra a otro antes de que esta cuenta
+            pueda desactivarse o perder permisos.
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+        {# ── Existing accounts ────────────────────────────────────────────── #}
+        <div class="col-12 col-xl-8">
+            <div class="card shadow-sm">
+                <div class="card-header"><h2 class="h6 mb-0">Cuentas registradas</h2></div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="colhead">
+                                <th scope="col">Persona</th>
+                                <th scope="col">Rol</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col">Alta</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for u in users %}
+                            {% set is_self = app.user and u.id == app.user.id %}
+                            <tr class="{{ u.active ? '' : 'opacity-50' }}">
+                                <td>
+                                    <div class="row-title">
+                                        {{ u.displayName ?? u.email }}
+                                        {% if is_self %}<span class="badge bg-body-tertiary text-body-secondary border ms-1 fw-normal">tú</span>{% endif %}
+                                    </div>
+                                    {% if u.displayName %}<div class="row-meta">{{ u.email }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {% if u.admin %}
+                                        <span class="badge rounded-pill border text-primary-emphasis bg-primary-subtle border-primary-subtle fw-medium">Administrador</span>
+                                    {% else %}
+                                        <span class="badge rounded-pill border text-body-secondary bg-body-tertiary fw-normal">Usuario</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge rounded-pill border d-inline-flex align-items-center gap-2 fw-medium
+                                                 {{ u.active
+                                                    ? 'text-success-emphasis bg-success-subtle border-success-subtle'
+                                                    : 'text-body-secondary bg-body-tertiary' }}">
+                                        <span class="status-dot {{ u.active ? 'ok' : '' }}"></span>{{ u.active ? 'Activa' : 'Desactivada' }}
+                                    </span>
+                                </td>
+                                <td class="text-nowrap">
+                                    <div class="stamp">{{ u.createdAt|fecha }}</div>
+                                    {% set change = latest_change[u.id]|default(null) %}
+                                    {% if change %}
+                                        <div class="stamp-rel" title="{{ change.action.label }} · {{ change.actorLabel }} · {{ change.occurredAt|fecha('d MMM y, HH:mm') }}">
+                                            {{ change.action.label|lower }} {{ change.occurredAt|hace }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                        {# Role toggle #}
+                                        <form method="post" action="{{ path('app_admin_user_role', {id: u.id}) }}">
+                                            <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                                            <input type="hidden" name="is_admin" value="{{ u.admin ? '0' : '1' }}">
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit"
+                                                    {{ is_self and u.admin ? 'disabled' }}
+                                                    title="{{ is_self and u.admin
+                                                        ? 'No puedes retirarte tus propios permisos'
+                                                        : (u.admin ? 'Quitar permisos de administrador' : 'Hacer administrador') }}">
+                                                {{ u.admin ? 'Quitar admin' : 'Hacer admin' }}
+                                            </button>
+                                        </form>
+
+                                        {# Active toggle #}
+                                        <form method="post" action="{{ path('app_admin_user_state', {id: u.id}) }}">
+                                            <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                                            <input type="hidden" name="active" value="{{ u.active ? '0' : '1' }}">
+                                            <button class="btn btn-sm {{ u.active ? 'btn-outline-danger' : 'btn-outline-success' }}" type="submit"
+                                                    {{ is_self and u.active ? 'disabled' }}
+                                                    title="{{ is_self and u.active ? 'No puedes desactivar tu propia cuenta' : '' }}">
+                                                {{ u.active ? 'Desactivar' : 'Reactivar' }}
+                                            </button>
+                                        </form>
+
+                                        {# Password reset #}
+                                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#pw-{{ u.id }}"
+                                                aria-expanded="false" aria-controls="pw-{{ u.id }}">
+                                            Contraseña
+                                        </button>
+                                    </div>
+
+                                    <div class="collapse mt-2" id="pw-{{ u.id }}">
+                                        <form method="post" action="{{ path('app_admin_user_password', {id: u.id}) }}"
+                                              class="d-flex gap-2 justify-content-end">
+                                            <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                                            <input type="password" name="password" class="form-control form-control-sm"
+                                                   style="max-width: 14rem;" required minlength="{{ min_password }}"
+                                                   autocomplete="new-password"
+                                                   placeholder="Nueva contraseña ({{ min_password }}+)"
+                                                   aria-label="Nueva contraseña para {{ u.email }}">
+                                            <button class="btn btn-sm btn-primary" type="submit">Guardar</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer small text-body-secondary">
+                    Desactivar cierra la sesión abierta de esa persona de inmediato y anula sus
+                    cookies de «mantener sesión». Las cuentas no se borran: los análisis que
+                    lanzaron siguen atribuidos a ellas.
+                </div>
+            </div>
+        </div>
+
+        {# ── New account ──────────────────────────────────────────────────── #}
+        <div class="col-12 col-xl-4">
+            <div class="card shadow-sm">
+                <div class="card-header"><h2 class="h6 mb-0">Nueva cuenta</h2></div>
+                <div class="card-body">
+                    <form method="post" action="{{ path('app_admin_user_create') }}">
+                        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+
+                        <div class="mb-3">
+                            <label for="new_email" class="form-label" style="font-size: .8125rem;">Correo</label>
+                            <input type="email" id="new_email" name="email" class="form-control" required
+                                   placeholder="usuario@matmor.unam.mx" autocomplete="off">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="new_name" class="form-label" style="font-size: .8125rem;">Nombre para mostrar</label>
+                            <input type="text" id="new_name" name="display_name" class="form-control"
+                                   placeholder="Opcional" autocomplete="off">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label" style="font-size: .8125rem;">
+                                Contraseña inicial
+                            </label>
+                            <input type="password" id="new_password" name="password" class="form-control"
+                                   required minlength="{{ min_password }}" autocomplete="new-password">
+                            <div class="form-text">Mínimo {{ min_password }} caracteres.</div>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="new_admin" name="is_admin" value="1">
+                            <label class="form-check-label" for="new_admin" style="font-size: .8125rem;">
+                                Administrador — puede editar la configuración del motor y las cuentas
+                            </label>
+                        </div>
+
+                        <button class="btn btn-primary w-100" type="submit">Crear cuenta</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

@@ -1,0 +1,19 @@
+{# Stacked A/B/self proportion bar. Params: run, total (> 0), tall (optional). #}
+<div class="progress-stacked siab-meter{{ tall|default(false) ? ' tall' : '' }}"
+     role="img"
+     aria-label="Tipo A {{ run.totalTypeA }}, Tipo B {{ run.totalTypeB }}, autocitas {{ run.totalSelf }}"
+     title="Tipo A {{ run.totalTypeA }} · Tipo B {{ run.totalTypeB }} · autocitas {{ run.totalSelf }}">
+    {% for part in [
+        {value: run.totalTypeA, class: 'bg-type-a'},
+        {value: run.totalTypeB, class: 'bg-type-b'},
+        {value: run.totalSelf, class: 'bg-type-self'},
+    ] %}
+        {% set pct = (part.value / total * 100)|round(2) %}
+        {% if pct > 0 %}
+            <div class="progress" role="progressbar" style="width: {{ pct }}%"
+                 aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar {{ part.class }}"></div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>

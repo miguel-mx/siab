@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Panel · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    {% set pill_label = {engine: 'Motor', openalex: 'OpenAlex', ollama: 'Gemma4'} %}
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">Panel</div>
+            <h1 class="siab-brand fs-3 mb-0">Resumen general</h1>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="d-flex align-items-center gap-1 flex-wrap" aria-label="Estado de servicios">
+                {% for service in health.headline %}
+                    <a class="badge rounded-pill text-body-secondary bg-body-tertiary border d-inline-flex align-items-center gap-2 fw-normal text-decoration-none"
+                       href="#estado-servicios"
+                       title="{{ service.name }}: {{ service.state.label }}{% if service.message %} — {{ service.message }}{% endif %}">
+                        <span class="status-dot {{ service.state.cssClass }}"></span>
+                        {{ pill_label[service.key]|default(service.name) }}
+                    </a>
+                {% endfor %}
+            </div>
+            <small class="text-body-secondary">Actualizado {{ health.checkedAt|hace }}</small>
+        </div>
+
+        <a class="btn btn-primary" href="{{ path('app_analysis_new') }}">+ Nuevo análisis</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="kpi-label">Investigadores</div>
+                    <div class="siab-kpi-value">{{ kpi.researchers }}</div>
+                    <div class="kpi-foot">{{ kpi.researchers_with_runs }} con análisis registrado</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="kpi-label">Análisis totales</div>
+                    <div class="siab-kpi-value">{{ kpi.runs }}</div>
+                    <div class="kpi-foot">
+                        {% if kpi.runs_this_month > 0 %}<span class="text-success fw-semibold">↑ {{ kpi.runs_this_month }}</span>{% endif %}
+                        este mes
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="kpi-label">Análisis este mes</div>
+                    <div class="siab-kpi-value">{{ kpi.runs_this_month }}</div>
+                    <svg class="siab-spark mt-2" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0" stop-color="var(--bs-primary)" stop-opacity=".22"/>
+                                <stop offset="1" stop-color="var(--bs-primary)" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="{{ sparkline.areaPath }}" fill="url(#sg)"/>
+                        <polyline points="{{ sparkline.points }}" fill="none" stroke="var(--bs-primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                        <circle cx="{{ sparkline.lastX }}" cy="{{ sparkline.lastY }}" r="2.6" fill="var(--bs-primary)"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            {# The one tile that reports a citation type takes that type's ink; the
+               three counting tiles beside it stay neutral. #}
+            <div class="card h-100 shadow-sm {{ kpi.type_a_share is null ? '' : 'kpi-a' }}">
+                <div class="card-body">
+                    <div class="kpi-label"><span class="swatch bg-type-a"></span>Citas Tipo A</div>
+                    {% if kpi.type_a_share is null %}
+                        <div class="siab-kpi-value">—</div>
+                        <div class="kpi-foot">sin análisis completos todavía</div>
+                    {% else %}
+                        <div class="siab-kpi-value">{{ (kpi.type_a_share * 100)|round }}<small>%</small></div>
+                        <div class="splitbar kpi-share" role="presentation">
+                            <span class="bg-type-a" style="width: {{ (kpi.type_a_share * 100)|round(2) }}%"></span>
+                        </div>
+                        <div class="kpi-foot">externas · las que cuentan (SECIHTI)</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-8">{{ include('dashboard/_recent_analyses.html.twig') }}</div>
+        <div class="col-12 col-xl-4">{{ include('dashboard/_service_health.html.twig') }}</div>
+    </div>
+
+    {{ include('dashboard/_roster.html.twig') }}
+
+    <p class="text-center text-body-secondary small mt-4 mb-0">
+        SIAB · Centro de Ciencias Matemáticas, UNAM — clasificación SECIHTI/Rizoma sobre datos de OpenAlex.
+    </p>
+</main>
+{% endblock %}

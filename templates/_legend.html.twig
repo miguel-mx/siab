@@ -1,0 +1,15 @@
+{# The A/B/self colour language, spelled out. `compact` is the key that sits over
+   the article rows; the long form explains what each type means for the count. #}
+{% if compact|default(false) %}
+    <div class="d-flex flex-wrap gap-3" style="font-size: .75rem;">
+        <span class="text-type-a"><span class="swatch bg-type-a"></span><b>A</b> · externas</span>
+        <span class="text-type-b"><span class="swatch bg-type-b"></span><b>B</b> · coautores</span>
+        <span class="text-type-self"><span class="swatch bg-type-self"></span><b>AUTO</b> · autocitas</span>
+    </div>
+{% else %}
+    <div class="d-flex flex-wrap gap-3 small text-body-secondary">
+        <span><span class="swatch bg-type-a"></span><b class="text-type-a">Tipo A</b> — externas{{ full|default(false) ? ', las que cuentan (SECIHTI)' : '' }}</span>
+        <span><span class="swatch bg-type-b"></span><b class="text-type-b">Tipo B</b> — coautoría</span>
+        <span><span class="swatch bg-type-self"></span><b class="text-type-self">Autocitas</b> — no cuentan</span>
+    </div>
+{% endif %}

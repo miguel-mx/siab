@@ -1,0 +1,173 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nuevo análisis · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-9 col-xl-7">
+            <div class="mb-4">
+                <div class="eyebrow">
+                    <a href="{{ path('app_dashboard') }}">Panel</a> · Nuevo análisis
+                </div>
+                <h1 class="siab-brand fs-3 mb-0">Nuevo análisis</h1>
+            </div>
+
+            {{ include('_flashes.html.twig') }}
+
+            {% if not engine_healthy %}
+                <div class="alert alert-danger d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+                    <div>
+                        <b>El motor de análisis no responde.</b>
+                        {% if is_granted('ROLE_ADMIN') and motor_arrancable() %}
+                            Arráncalo antes de lanzar un análisis.
+                        {% else %}
+                            Un administrador debe arrancarlo antes de lanzar un análisis.
+                        {% endif %}
+                    </div>
+                    {{ include('_engine_start.html.twig', {volver: 'app_analysis_new', clase: 'btn btn-sm btn-danger'}) }}
+                </div>
+            {% endif %}
+
+            {% if roster is not empty %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header"><h2 class="h6 mb-0">Investigador a analizar</h2></div>
+                    <div class="card-body">
+                        <form method="post" action="{{ path('app_analysis_start_roster') }}">
+                            <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+
+                            <div class="mb-3">
+                                <label for="roster_researcher" class="form-label">Investigador</label>
+                                <select class="form-select form-select-lg" id="roster_researcher" name="researcher" required autofocus>
+                                    <option value="" selected disabled>Elige un investigador del padrón…</option>
+                                    {% for r in roster %}
+                                        <option value="{{ r.id }}">
+                                            {{ r.displayName }}{% if r.field %} · {{ r.field }}{% endif %}
+                                            {%- if not r.preferredEngineQuery %} — sin identificador{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    {{ roster|length }} en el padrón. Sus identificadores ya están registrados;
+                                    no hace falta escribir nada más.
+                                </div>
+                            </div>
+
+                            <div class="row g-3 align-items-end mb-3">
+                                <div class="col-12 col-sm-6">
+                                    <label for="roster_language" class="form-label">Idioma del informe</label>
+                                    <select class="form-select" id="roster_language" name="report_language">
+                                        <option value="es">Español</option>
+                                        <option value="en">Inglés</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-sm-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="1" id="roster_report" name="want_report">
+                                        <label class="form-check-label" for="roster_report">Generar informe narrativo</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{ include('analysis/_sources.html.twig', {options: source_options, checked: source_defaults}) }}
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" type="submit">Lanzar análisis</button>
+                                <a class="btn btn-outline-secondary" href="{{ path('app_dashboard') }}">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer small text-body-secondary">
+                        Al lanzarlo puedes cerrar esta página: el análisis sigue por su cuenta y
+                        aparecerá en el historial al terminar.
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <span class="d-block mt-1">
+                                Requiere un worker consumiendo la cola:
+                                <code>php bin/console messenger:consume async</code>.
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h2 class="h6 mb-0">
+                        {{ roster is empty ? 'Investigador a analizar' : '¿No está en el padrón?' }}
+                    </h2>
+                </div>
+                <div class="card-body">
+                    {% if roster is not empty %}
+                        <p class="small text-body-secondary">
+                            Busca a la persona por nombre u ORCID y se añadirá al padrón al analizarla.
+                        </p>
+                    {% endif %}
+                    {{ form_start(form, {attr: {novalidate: 'novalidate'}}) }}
+                        {{ form_errors(form) }}
+
+                        <div class="mb-3">
+                            {{ form_label(form.query, null, {label_attr: {class: 'form-label'}}) }}
+                            {{ form_widget(form.query, {attr: {class: 'form-control form-control-lg'}}) }}
+                            <div class="form-text">{{ form.query.vars.help }}</div>
+                            {{ form_errors(form.query) }}
+                        </div>
+
+                        <div class="row g-3 align-items-end mb-3">
+                            <div class="col-12 col-sm-6">
+                                {{ form_label(form.reportLanguage, null, {label_attr: {class: 'form-label'}}) }}
+                                {{ form_widget(form.reportLanguage, {attr: {class: 'form-select'}}) }}
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="form-check">
+                                    {{ form_widget(form.wantReport, {attr: {class: 'form-check-input'}}) }}
+                                    {{ form_label(form.wantReport, null, {label_attr: {class: 'form-check-label'}}) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form_label(form.sources, null, {label_attr: {class: 'form-label'}}) }}
+                            <p class="form-text mt-0">
+                                OpenAlex se consulta siempre; estas añaden cobertura.
+                            </p>
+                            {% for child in form.sources %}
+                                {% set option = source_options|filter(o => o.source.value == child.vars.value)|first %}
+                                <div class="form-check">
+                                    {{ form_widget(child, {attr: {class: 'form-check-input'}|merge(option and option.available ? {} : {disabled: 'disabled'})}) }}
+                                    {{ form_label(child, null, {label_attr: {class: 'form-check-label'}}) }}
+                                    <div class="form-text mt-0" style="font-size: .75rem;">
+                                        {{ option and option.available ? option.source.hint : (option ? option.reason) }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn {{ roster is empty ? 'btn-primary' : 'btn-outline-primary' }}" type="submit">
+                                Buscar y analizar
+                            </button>
+                            <a class="btn btn-outline-secondary" href="{{ path('app_dashboard') }}">Cancelar</a>
+                        </div>
+                    {{ form_end(form) }}
+                </div>
+                {% if roster is empty %}
+                    <div class="card-footer small text-body-secondary">
+                        Al lanzarlo puedes cerrar esta página: el análisis sigue por su cuenta y
+                        aparecerá en el historial al terminar.
+                        {% if is_granted('ROLE_ADMIN') %}
+                            <span class="d-block mt-1">
+                                Requiere un worker consumiendo la cola:
+                                <code>php bin/console messenger:consume async</code>.
+                            </span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if candidates is not empty %}
+                {{ include('analysis/_candidates.html.twig') }}
+            {% endif %}
+        </div>
+    </div>
+</main>
+{% endblock %}

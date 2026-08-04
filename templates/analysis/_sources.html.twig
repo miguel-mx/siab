@@ -1,0 +1,28 @@
+{# Source checkboxes for the roster form (the Symfony form renders its own).
+   Params: options (from AnalysisController::sourceOptions), checked (list of values). #}
+<div class="mb-3">
+    <div class="form-label">Fuentes</div>
+    <p class="form-text mt-0">
+        OpenAlex se consulta siempre: es la única que aporta identificadores de autor, y sin
+        ellos toda cita se contaría como Tipo A. Las demás añaden cobertura.
+    </p>
+
+    {% for option in options %}
+        {% set source = option.source %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="sources[]" value="{{ source.value }}"
+                   id="src_{{ source.value }}"
+                   {{ source.value in checked ? 'checked' }}
+                   {{ option.available ? '' : 'disabled' }}>
+            <label class="form-check-label {{ option.available ? '' : 'text-body-secondary' }}" for="src_{{ source.value }}">
+                {{ source.label }}
+                {% if not option.available %}
+                    <span class="badge rounded-pill border text-body-secondary bg-body-tertiary fw-normal ms-1">no disponible</span>
+                {% endif %}
+            </label>
+            <div class="form-text mt-0" style="font-size: .75rem;">
+                {{ option.available ? source.hint : option.reason }}
+            </div>
+        </div>
+    {% endfor %}
+</div>

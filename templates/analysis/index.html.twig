@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Historial de análisis · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">
+                <a href="{{ path('app_dashboard') }}">Panel</a> · Historial
+            </div>
+            <h1 class="siab-brand fs-3 mb-0">
+                {{ archived ? 'Análisis archivados' : 'Análisis' }}
+                <span class="text-body-secondary fs-5">· {{ total }}</span>
+            </h1>
+        </div>
+        <div class="d-flex gap-2">
+            {% if archived %}
+                <a class="btn btn-outline-secondary" href="{{ path('app_run_index') }}">← Historial</a>
+            {% elseif archived_total > 0 %}
+                <a class="btn btn-outline-secondary" href="{{ path('app_run_index', {archivados: 1}) }}">
+                    Archivados <span class="badge rounded-pill bg-body-tertiary text-body-secondary">{{ archived_total }}</span>
+                </a>
+            {% endif %}
+            <a class="btn btn-primary" href="{{ path('app_analysis_new') }}">+ Nuevo análisis</a>
+        </div>
+    </div>
+
+    {% if archived %}
+        <div class="alert alert-secondary py-2 px-3 small" role="alert">
+            Estos análisis están fuera del historial y de todas las cifras del panel. Se conservan
+            enteros; ábrelos para consultarlos o restaurarlos.
+        </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <form method="get" class="row g-2 align-items-center">
+                {# Filtering resets paging: page 4 of the old result set means nothing in the new one. #}
+                {% if archived %}<input type="hidden" name="archivados" value="1">{% endif %}
+                <div class="col-12 col-sm">
+                    <input type="search" name="q" value="{{ search }}" class="form-control form-control-sm"
+                           placeholder="Buscar por investigador, ORCID u OpenAlex…" aria-label="Buscar análisis">
+                </div>
+                <div class="col-auto">
+                    <select name="estado" class="form-select form-select-sm" aria-label="Filtrar por estado">
+                        <option value="">Todos los estados</option>
+                        {% for case in enum_cases('App\\Enum\\RunStatus') %}
+                            <option value="{{ case.value }}" {{ status == case ? 'selected' }}>
+                                {{ case.label }}{% if counts[case.value] is defined %} ({{ counts[case.value] }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Filtrar</button>
+                </div>
+                {% if search or status %}
+                    <div class="col-auto">
+                        <a class="btn btn-sm btn-link" href="{{ path('app_run_index') }}">Limpiar</a>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="colhead">
+                        <th scope="col">Investigador</th>
+                        <th scope="col">Fecha</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col" style="min-width: 11rem;">Tipo A / B / autocitas</th>
+                        <th scope="col">Informe</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for run in runs %}
+                    {{ include('analysis/_run_row.html.twig', {run: run, show_report: true}) }}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-body-secondary py-5">
+                            {% if search or status %}
+                                Ningún análisis coincide con el filtro.
+                                <a href="{{ path('app_run_index') }}">Ver todo el historial</a>.
+                            {% else %}
+                                Todavía no hay análisis.
+                                <a href="{{ path('app_analysis_new') }}">Lanza el primero</a>.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if runs is not empty %}
+            <div class="card-footer d-flex flex-wrap align-items-center justify-content-between gap-3">
+                {{ include('_legend.html.twig') }}
+
+                {% if pages > 1 %}
+                    {% set filters = {q: search ?: null, estado: status ? status.value : null, archivados: archived ? 1 : null} %}
+                    <nav aria-label="Paginación del historial">
+                        <ul class="pagination pagination-sm mb-0">
+                            {# Ends render as spans, not greyed-out links: a disabled <a> is still
+                               followable by keyboard and by anything ignoring Bootstrap's CSS. #}
+                            <li class="page-item {{ page > 1 ? '' : 'disabled' }}">
+                                {% if page > 1 %}
+                                    <a class="page-link" rel="prev" aria-label="Página anterior"
+                                       href="{{ path('app_run_index', filters|merge({p: page - 1})) }}">‹</a>
+                                {% else %}
+                                    <span class="page-link" aria-hidden="true">‹</span>
+                                {% endif %}
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">{{ page }} / {{ pages }}</span>
+                            </li>
+                            <li class="page-item {{ page < pages ? '' : 'disabled' }}">
+                                {% if page < pages %}
+                                    <a class="page-link" rel="next" aria-label="Página siguiente"
+                                       href="{{ path('app_run_index', filters|merge({p: page + 1})) }}">›</a>
+                                {% else %}
+                                    <span class="page-link" aria-hidden="true">›</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </nav>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

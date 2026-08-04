@@ -1,0 +1,18 @@
+{# "Arrancar motor" button. Renders nothing unless the viewer is an administrator
+   and the deployment defines ENGINE_START_COMMAND.
+   Params: volver — route name to return to (see EngineController::RETURN_ROUTES),
+           clase  — button classes, so the panel can use a small outline variant. #}
+{% if is_granted('ROLE_ADMIN') and motor_arrancable() %}
+    <form method="post" action="{{ path('app_admin_engine_start') }}" class="d-inline-block">
+        {# Token id 'submit' like every other form here: it is the one declared
+           stateless in config/packages/csrf.yaml, and the csrf-protection
+           controller rewrites this field's value on submit, which a stateful
+           token would not survive. #}
+        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+        <input type="hidden" name="volver" value="{{ volver|default('app_admin_settings') }}">
+        <button class="{{ clase|default('btn btn-sm btn-primary') }}" type="submit"
+                data-pending="Arrancando… (hasta 25 s)">
+            Arrancar motor
+        </button>
+    </form>
+{% endif %}

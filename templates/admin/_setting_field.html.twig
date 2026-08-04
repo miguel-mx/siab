@@ -1,0 +1,73 @@
+{# One setting row. Params: row (see SettingsController::rows).
+   Secrets never carry their value into the HTML — only whether one is stored. #}
+{% set key = row.key %}
+
+<div class="row g-2 align-items-start mb-3 pb-3 border-bottom">
+    <div class="col-12 col-md-4">
+        <label class="form-label fw-medium mb-0" for="set-{{ key.value }}" style="font-size: .8125rem;">
+            {{ key.label }}
+        </label>
+        <div class="small text-body-secondary">{{ key.help }}</div>
+
+        {% if row.overridden %}
+            {# Provenance, a step below the field's own help text rather than beside it. #}
+            <div class="stamp-rel mt-1">
+                Modificado {{ row.updated_at|fecha }}{% if row.updated_by %}
+                    · {{ row.updated_by.displayName ?? row.updated_by.email }}
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-md-6">
+        <input type="{{ key.inputType }}"
+               id="set-{{ key.value }}"
+               name="{{ key.value }}"
+               class="form-control"
+               value="{{ key.isSecret ? '' : row.value }}"
+               {% if key.inputType == 'number' %}
+                   step="{{ key.value == 'count_tolerance' ? '0.01' : '1' }}"
+                   min="0"
+               {% endif %}
+               {% if key.isSecret %}
+                   autocomplete="off"
+                   placeholder="{{ row.overridden ? '•••••••• — escribe una nueva para reemplazarla' : 'Sin configurar' }}"
+               {% endif %}>
+
+        {% if not key.isSecret and not row.overridden %}
+            <div class="form-text">Por defecto: <code>{{ row.default }}</code></div>
+        {% endif %}
+
+        {% if row.preview %}
+            {# Length and last four characters — enough para reconocer cuál está
+               guardada, sin que el valor llegue nunca al HTML. #}
+            <div class="form-text font-monospace">Guardada: {{ row.preview }}</div>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-md-2 text-md-end d-flex flex-column align-items-md-end gap-1">
+        {% if row.preview and key.apiKeySource %}
+            {# formaction sends this one form to another action: a nested <form>
+               here would be invalid HTML and silently dropped by the browser. #}
+            <button class="btn btn-sm btn-outline-primary" type="submit" formnovalidate
+                    formaction="{{ path('app_admin_settings_test_key', {key: key.value}) }}"
+                    data-pending="Probando…"
+                    title="Preguntar al servicio si acepta esta clave">
+                Probar clave
+            </button>
+        {% endif %}
+
+        {% if row.overridden %}
+            {# A named submit inside the page's one form: a nested <form> here would be
+               invalid HTML and dropped. formnovalidate so a half-typed value elsewhere
+               on the page cannot block the reset. #}
+            <button class="btn btn-sm btn-outline-secondary" type="submit"
+                    name="reset" value="{{ key.value }}" formnovalidate
+                    title="Volver al valor por defecto">
+                Restablecer
+            </button>
+        {% else %}
+            <span class="badge rounded-pill border text-body-secondary bg-body-tertiary fw-normal">Por defecto</span>
+        {% endif %}
+    </div>
+</div>

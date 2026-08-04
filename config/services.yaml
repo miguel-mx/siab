@@ -21,3 +21,7 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # EngineLauncher only needs "does /health answer?"; spelled out rather than left
+    # to autowiring so the binding is visible where the two are wired together.
+    App\Engine\EngineHealthProbe: '@App\Engine\CitationEngineClient'

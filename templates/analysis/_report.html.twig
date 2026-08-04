@@ -1,0 +1,71 @@
+{# Narrative report: shows it, or offers to write it, or reports why it failed.
+   Generation is queued (the model takes ~1 min), so this also covers the wait. #}
+<section class="card shadow-sm mb-4" id="informe">
+    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h2 class="h6 mb-0">Informe narrativo</h2>
+
+        {% if run.reportPending %}
+            <span class="small text-body-secondary d-inline-flex align-items-center gap-2">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Redactando desde {{ run.reportRequestedAt|hace }}…
+            </span>
+        {% else %}
+            <form method="post" action="{{ path('app_run_report', {slug: run.slug}) }}"
+                  class="d-flex align-items-center gap-2">
+                <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                <select name="report_language" class="form-select form-select-sm w-auto" aria-label="Idioma del informe">
+                    <option value="es"{{ run.reportLanguage == 'es' ? ' selected' : '' }}>Español</option>
+                    <option value="en"{{ run.reportLanguage == 'en' ? ' selected' : '' }}>Inglés</option>
+                </select>
+                <button class="btn btn-sm {{ run.report ? 'btn-outline-secondary' : 'btn-primary' }}" type="submit">
+                    {{ run.report ? 'Regenerar' : 'Generar informe' }}
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if run.reportError %}
+        <div class="card-body pb-0">
+            <div class="alert alert-danger mb-0" role="alert">
+                <b>No se pudo redactar el informe.</b> {{ run.reportError }}
+                <div class="small mt-1">
+                    Las cifras del análisis no se ven afectadas: sólo falta el texto.
+                    Puedes volver a pedirlo cuando el servicio esté disponible.
+                </div>
+                {% if is_granted('ROLE_ADMIN') %}
+                    <div class="small mt-1">
+                        Requiere Ollama accesible y un worker consumiendo la cola
+                        (<code>php bin/console messenger:consume async</code>).
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if run.report %}
+        <div class="card-body">
+            {# Stored as Markdown (the model's exact output); rendered here with raw
+               HTML stripped — see config/packages/twig_extra.yaml. #}
+            <div class="report-body">{{ run.report|markdown_to_html }}</div>
+        </div>
+        <div class="card-footer small text-body-secondary">
+            {{ run.reportLanguage == 'en' ? 'Inglés' : 'Español' }} ·
+            redactado por el modelo a partir de cifras ya calculadas en Python; el modelo no aporta datos bibliográficos.
+        </div>
+    {% elseif run.reportPending %}
+        <div class="card-body text-body-secondary">
+            El modelo está redactando el informe con las cifras de este análisis. Suele tardar cerca de un minuto;
+            esta página se actualiza cada 10 s.
+        </div>
+    {% else %}
+        <div class="card-body text-body-secondary">
+            Este análisis no tiene informe.
+            {% if run.canGenerateReport %}
+                Se puede redactar ahora con las cifras ya guardadas — no se vuelve a consultar OpenAlex,
+                así que los números serán idénticos a los de arriba.
+            {% else %}
+                No conserva el resultado del motor, así que habría que ejecutar el análisis de nuevo.
+            {% endif %}
+        </div>
+    {% endif %}
+</section>

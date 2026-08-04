@@ -1,0 +1,115 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Investigadores · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">
+                <a href="{{ path('app_dashboard') }}">Panel</a> · Padrón
+            </div>
+            <h1 class="siab-brand fs-3 mb-0">Investigadores <span class="text-body-secondary fs-5">· {{ total }}</span></h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary" href="{{ path('app_researcher_new') }}">+ Añadir investigador</a>
+            <a class="btn btn-outline-secondary" href="{{ path('app_analysis_new') }}">Nuevo análisis</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-12 col-sm">
+                    <input type="search" name="q" value="{{ search }}" class="form-control form-control-sm"
+                           placeholder="Buscar por nombre, ORCID, OpenAlex o área…" aria-label="Buscar investigador">
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Buscar</button>
+                </div>
+                {% if search %}
+                    <div class="col-auto">
+                        <a class="btn btn-sm btn-link" href="{{ path('app_researcher_index') }}">Limpiar</a>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="colhead">
+                        <th scope="col">Investigador</th>
+                        <th scope="col">Identificadores</th>
+                        <th scope="col" class="text-end">Obras</th>
+                        <th scope="col" class="text-end">Análisis</th>
+                        <th scope="col">Último</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in roster %}
+                    {% set researcher = row.researcher %}
+                    <tr>
+                        <td>
+                            <a class="row-title" href="{{ path('app_researcher_show', {slug: researcher.slug}) }}">
+                                {{ researcher.displayName }}
+                            </a>
+                            <div class="row-meta">{{ researcher.field ?? 'área sin registrar' }}</div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% if researcher.orcid %}<span class="idchip"><span class="k">ORCID</span>{{ researcher.orcid }}</span>{% endif %}
+                                {% if researcher.openalexId %}<span class="idchip"><span class="k">OpenAlex</span>{{ researcher.openalexId }}</span>{% endif %}
+                                {% if researcher.scopusId %}<span class="idchip"><span class="k">Scopus</span>{{ researcher.scopusId }}</span>{% endif %}
+                                {% if not researcher.orcid %}
+                                    {# The identifiers are edited on the researcher's own page; from
+                                       the roster it was not obvious there was anywhere to set them. #}
+                                    <a class="small text-decoration-none" href="{{ path('app_researcher_show', {slug: researcher.slug}) }}#orcid">
+                                        {{ researcher.openalexId ? '+ ORCID' : 'sin identificadores · capturar' }}
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-end cell-num">{{ researcher.worksCount ?? '—' }}</td>
+                        <td class="text-end cell-num">{{ row.runs }}</td>
+                        <td class="text-nowrap text-body-secondary small">{{ row.lastRun ? row.lastRun|fecha : '—' }}</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                {% set prefill = researcher.orcid ?? researcher.openalexId %}
+                                <a class="btn btn-sm btn-primary" href="{{ path('app_analysis_new', prefill ? {q: prefill} : {}) }}">+ Nuevo</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_researcher_show', {slug: researcher.slug}) }}">Abrir</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-body-secondary py-5">
+                            {% if search %}
+                                Ningún investigador coincide con «{{ search }}».
+                                <a href="{{ path('app_researcher_index') }}">Ver todo el padrón</a>.
+                            {% else %}
+                                El padrón está vacío.
+                                <a href="{{ path('app_researcher_new') }}">Añade a alguien</a> para empezar.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if roster is not empty %}
+            <div class="card-footer small text-body-secondary">
+                {% if search %}
+                    {{ roster|length }} de {{ total }} investigadores coinciden con «{{ search }}».
+                {% else %}
+                    {{ roster|length }} {{ roster|length == 1 ? 'investigador' : 'investigadores' }} en el padrón.
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

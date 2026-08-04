@@ -1,0 +1,16 @@
+{# Status badge for a run. Params: status (RunStatus), flags (array, optional). #}
+{% set bs = {
+    'done': 'text-success-emphasis bg-success-subtle border-success-subtle',
+    'run': 'text-primary-emphasis bg-primary-subtle border-primary-subtle',
+    'fail': 'text-danger-emphasis bg-danger-subtle border-danger-subtle',
+    'off': 'text-body-secondary bg-body-tertiary',
+}[status.chipClass] %}
+{% set dot = status == constant('App\\Enum\\RunStatus::FAILED')
+    ? 'down'
+    : (status == constant('App\\Enum\\RunStatus::CANCELED')
+        ? ''
+        : (status.hasFigures ? (flags|default([]) ? 'warn' : 'ok') : 'busy')) %}
+
+<span class="badge rounded-pill border {{ bs }} d-inline-flex align-items-center gap-2 fw-medium">
+    <span class="status-dot {{ dot }}"></span>{{ status.label }}
+</span>

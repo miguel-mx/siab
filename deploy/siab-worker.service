@@ -1,0 +1,53 @@
+# The Symfony Messenger worker that actually runs the analyses.
+#
+# You do not start this per analysis: it is a long-lived process that consumes the
+# queue as messages arrive. Without one, launching an analysis leaves it "En cola"
+# indefinitely, which is the single most common way SIAB looks broken.
+#
+# Install:
+#   sudo install -m 0644 deploy/siab-worker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now siab-worker
+#   systemctl status siab-worker
+#
+# Adjust User=, WorkingDirectory= and the php path to the real deployment. The user
+# must be able to write var/ (cache, logs) and reach the database.
+
+[Unit]
+Description=SIAB analysis worker (Symfony Messenger)
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/siab
+
+# --time-limit makes the worker exit every hour and lets systemd start it fresh:
+# the standard remedy for a long-running PHP process accumulating memory. It only
+# takes effect *between* messages, so an analysis in progress is never cut off.
+# --memory-limit is the belt to that braces.
+ExecStart=/usr/bin/php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M
+
+# Required for the above: the hourly exit is a success, and it must come back.
+Restart=always
+RestartSec=5
+
+Environment=APP_ENV=prod
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+# ── Running more than one ─────────────────────────────────────────────────────
+# One worker handles one analysis at a time. To run several, rename this file to
+# siab-worker@.service and enable instances:
+#   sudo systemctl enable --now siab-worker@1 siab-worker@2
+# Doctrine's transport locks each message as it is picked up, so workers never
+# collide on the same run.
+#
+# ── After deploying new code ──────────────────────────────────────────────────
+# A worker holds the code it started with. Add this to the deploy script:
+#   php bin/console messenger:stop-workers     # they exit; systemd restarts them

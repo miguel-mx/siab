@@ -1,0 +1,20 @@
+{% extends 'bundles/TwigBundle/Exception/_error_layout.html.twig' %}
+
+{% block title %}Página no encontrada{% endblock %}
+{% block code %}404{% endblock %}
+{% block heading %}Esta página no existe{% endblock %}
+
+{% block body %}
+    <p>La dirección es incorrecta, o lo que había aquí ya no está.</p>
+    <p class="muted">
+        Si venías de un enlace a un análisis: puede haberse eliminado, o archivado
+        —los análisis archivados salen del historial pero se conservan, y un
+        administrador puede restaurarlos.
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <a class="btn primary" href="/">Ir al panel</a>
+    <a class="btn" href="/investigadores">Investigadores</a>
+    <a class="btn" href="/analisis">Historial de análisis</a>
+{% endblock %}

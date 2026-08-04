@@ -1,0 +1,17 @@
+# The only privilege the web server needs for the "Arrancar motor" button.
+#
+# Install (visudo validates before it can lock anyone out):
+#   sudo install -m 0440 deploy/siab-engine.sudoers /etc/sudoers.d/siab-engine
+#   sudo visudo -c
+#
+# Then in SIAB's .env:
+#   ENGINE_START_COMMAND="sudo -n /usr/bin/systemctl start citas-engine.service"
+#
+# Note what is *not* here: no stop, no restart, no wildcard on the unit name. The
+# full path and the exact argument are both required — `systemctl start` alone
+# would let anything on the system be started, and a wildcard would allow
+# templated units. www-data can ask for this one service to come up, nothing else.
+#
+# Replace www-data with the Apache user of the distribution (apache on RHEL).
+
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start citas-engine.service

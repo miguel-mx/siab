@@ -1,0 +1,39 @@
+{# One article's citing works. Rendered inline on first open (see app.js) and
+   served on its own by AnalysisController::articleCitations — the citations are
+   the bulk of a run, so a page of 25 articles no longer carries all of them. #}
+{% set labels = {'openalex': 'OpenAlex', 'scopus': 'Scopus', 'zbmath': 'zbMATH', 'wos': 'WoS', 'inspire': 'INSPIRE'} %}
+{% set tags = {'A': 'cls-a', 'B': 'cls-b', 'self': 'cls-self'} %}
+{% set names = {'A': 'Tipo A — externa', 'B': 'Tipo B — coautoría', 'self': 'Autocita'} %}
+
+<div class="citegroup">
+    {% if article.citingWorks|length %}
+        <div class="citegroup-head">Citando este artículo · {{ article.citingWorks|length }}</div>
+        <ol class="citelist list-unstyled mb-0">
+            {% for cw in article.citingWorks %}
+                <li>
+                    <span class="cls {{ tags[cw.classification]|default('cls-self') }}"
+                          title="{{ names[cw.classification]|default('sin clasificar') }}">
+                        {{ cw.classification == 'self' ? 'AUTO' : (cw.classification ?? '?') }}
+                    </span>
+                    <div>
+                        {% set doi_link = cw.doi|doi_url %}
+                        {% if doi_link %}
+                            <a class="cite-title" href="{{ doi_link }}" target="_blank" rel="noopener">{{ cw.title|striptags }}</a>
+                        {% else %}
+                            <span class="cite-title">{{ cw.title|striptags }}</span>
+                        {% endif %}
+                        <span class="cite-meta">
+                            {%- if cw.authors %}{{ cw.authors|slice(0, 3)|join('; ') }}{% if cw.authors|length > 3 %} et al.{% endif %} · {% endif -%}
+                            ({{ cw.year ?? 's/f' }})
+                            {#- The citing work's journal is not stored, so the database it
+                                came from stands in as its provenance. -#}
+                            {%- if cw.source %} · <span class="venue">{{ labels[cw.source]|default(cw.source) }}</span>{% endif -%}
+                        </span>
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <div class="text-body-secondary" style="font-size: .8125rem;">Sin citas.</div>
+    {% endif %}
+</div>

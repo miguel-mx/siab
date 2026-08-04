@@ -1,0 +1,80 @@
+{#
+  Shared shell for the error pages.
+
+  Deliberately NOT extending base.html.twig. The navbar there calls app.user and
+  is_granted(), which load the user from the session — and that goes through the
+  user provider, which reads the database. When the 500 was *caused* by the
+  database being unreachable, rendering that navbar throws a second exception while
+  handling the first, and Symfony falls back to its bare white "error occurred"
+  page. An error page has to work when the rest of the application does not.
+
+  So: no security calls, no database, no Twig extensions of ours, no asset
+  pipeline, no JavaScript. Inline CSS only, and it still looks like SIAB.
+
+  Blocks: code (big numeral), heading, body (prose), actions (links).
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Error{% endblock %} · SIAB</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%22104%22>📊</text></svg>">
+    <style>
+        /* Hand-kept copy of the tokens in assets/styles/app.css — this page cannot
+           reach the asset pipeline, so the values live here. Change them together. */
+        :root {
+            --bg: #f1f3f7; --surface: #fff; --text: #1f2937; --muted: #6b7280;
+            --line: #dfe3ea; --accent: #1d4ed8; --on-accent: #fff;
+            --display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0a0d12; --surface: #0f1319; --text: #d4dae5; --muted: #8b93a3;
+                --line: #262d3a; --accent: #60a5fa; --on-accent: #0b1020;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 1.5rem; background: var(--bg); color: var(--text);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.55;
+        }
+        .card {
+            background: var(--surface); border: 1px solid var(--line); border-radius: .5rem;
+            padding: 2.5rem; max-width: 34rem; width: 100%;
+        }
+        .brand { font-family: var(--display); font-size: 1.05rem; color: var(--muted); margin: 0 0 1.75rem; }
+        .brand b { color: var(--accent); font-weight: 600; }
+        .code { font-family: var(--display); font-size: 3.5rem; line-height: 1; margin: 0; }
+        h1 { font-family: var(--display); font-size: 1.4rem; font-weight: 600; margin: .5rem 0 1rem; }
+        p { margin: 0 0 1rem; }
+        .muted { color: var(--muted); font-size: .9rem; }
+        .actions { margin-top: 1.75rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+        a.btn {
+            display: inline-block; padding: .45rem .9rem; border-radius: .375rem;
+            text-decoration: none; font-size: .9rem; border: 1px solid var(--line); color: var(--text);
+        }
+        a.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+        a.btn:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <p class="brand"><b>SIAB</b> · Análisis de Citas</p>
+
+        <p class="code">{% block code %}{% endblock %}</p>
+        <h1>{% block heading %}{% endblock %}</h1>
+
+        {% block body %}{% endblock %}
+
+        <div class="actions">
+            {% block actions %}
+                {# Plain hrefs, not path(): the router is one more thing that can be
+                   unavailable in the failure this page exists to report. #}
+                <a class="btn primary" href="/">Ir al panel</a>
+            {% endblock %}
+        </div>
+    </main>
+</body>
+</html>

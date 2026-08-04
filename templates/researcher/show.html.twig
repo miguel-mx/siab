@@ -1,0 +1,212 @@
+{% extends 'base.html.twig' %}
+
+{% set prefill = researcher.orcid ?? researcher.openalexId %}
+
+{% block title %}{{ researcher.displayName }} · SIAB{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">
+                <a href="{{ path('app_dashboard') }}">Panel</a> ·
+                <a class="text-decoration-none text-body-secondary" href="{{ path('app_researcher_index') }}">Padrón</a>
+            </div>
+            <h1 class="siab-brand fs-3 mb-1">{{ researcher.displayName }}</h1>
+            <div class="d-flex flex-wrap gap-1">
+                {% if researcher.orcid %}
+                    <a class="idchip text-decoration-none" href="https://orcid.org/{{ researcher.orcid }}" target="_blank" rel="noopener">
+                        <span class="k">ORCID</span>{{ researcher.orcid }}
+                    </a>
+                {% endif %}
+                {% if researcher.openalexId %}
+                    <a class="idchip text-decoration-none" href="https://openalex.org/{{ researcher.openalexId }}" target="_blank" rel="noopener">
+                        <span class="k">OpenAlex</span>{{ researcher.openalexId }}
+                    </a>
+                {% endif %}
+                {% if researcher.scopusId %}<span class="idchip"><span class="k">Scopus</span>{{ researcher.scopusId }}</span>{% endif %}
+                {% if researcher.worksCount %}<span class="idchip"><span class="k">Obras</span>{{ researcher.worksCount }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_researcher_index') }}">Volver al padrón</a>
+            <a class="btn btn-primary" href="{{ path('app_analysis_new', prefill ? {q: prefill} : {}) }}">+ Nuevo análisis</a>
+        </div>
+    </div>
+
+    {% if current %}
+        {% set total = current.totalCitations %}
+        {{ include('_kpi_tiles.html.twig', {figures: current, total: total}) }}
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h2 class="h6 mb-0">Cifras vigentes</h2>
+                <span class="small text-body-secondary">
+                    Del análisis del {{ current.createdAt|fecha('d MMM y, HH:mm') }} ·
+                    <a class="text-decoration-none" href="{{ path('app_run_show', {slug: current.slug}) }}">ver detalle</a>
+                </span>
+            </div>
+            <div class="card-body">
+                {% if total > 0 %}
+                    {{ include('_meter.html.twig', {run: current, total: total, tall: true}) }}
+                    <div class="mt-3">{{ include('_legend.html.twig', {full: true}) }}</div>
+                {% else %}
+                    <p class="text-body-secondary mb-0">El análisis vigente no contabilizó citas.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-secondary" role="alert">
+            Todavía no hay un análisis con cifras para {{ researcher.displayName }}.
+            <a href="{{ path('app_analysis_new', prefill ? {q: prefill} : {}) }}">Lanza uno</a>
+            {%- if history is not empty %} — hay {{ history|length }} intento(s) en el historial de abajo{% endif %}.
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-8">
+            <section class="card shadow-sm h-100">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h2 class="h6 mb-0">Historial <span class="text-body-secondary fw-normal">· {{ history|length }}</span></h2>
+                    <span class="small text-body-secondary">Más reciente primero</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="colhead">
+                                <th scope="col">Fecha</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col" style="min-width: 11rem;">Tipo A / B / autocitas</th>
+                                <th scope="col" class="text-end">Artículos</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for run in history %}
+                            {% set run_total = run.totalCitations %}
+                            <tr>
+                                <td class="text-nowrap stamp">{{ run.createdAt|fecha('d MMM y, HH:mm') }}</td>
+                                <td>{{ include('_run_status.html.twig', {status: run.status, flags: run.flags}) }}</td>
+                                <td>
+                                    {% if run.status.hasFigures and run_total > 0 %}
+                                        {{ include('_meter.html.twig', {run: run, total: run_total}) }}
+                                        <div class="metric-split justify-content-start mt-1">
+                                            <span class="text-type-a"><span class="k">A</span> <span class="n">{{ run.totalTypeA }}</span></span>
+                                            <span class="text-type-b"><span class="k">B</span> <span class="n">{{ run.totalTypeB }}</span></span>
+                                            <span class="text-type-self"><span class="k">AUTO</span> <span class="n">{{ run.totalSelf }}</span></span>
+                                            {% if run.flags %}
+                                                <span class="text-warning-emphasis">· {{ run.flags|length }} {{ run.flags|length == 1 ? 'aviso' : 'avisos' }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% elseif run.status == constant('App\\Enum\\RunStatus::FAILED') %}
+                                        {% set reason = run.errorMessage|default('Error desconocido') %}
+                                        <span class="small text-danger-emphasis">{{ reason|slice(0, 60) }}{{ reason|length > 60 ? '…' }}</span>
+                                    {% else %}
+                                        <span class="small text-body-secondary">Sin cifras todavía</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end cell-num">{{ run.status.hasFigures ? run.totalArticles : '—' }}</td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_run_show', {slug: run.slug}) }}">Ver</a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="5" class="text-center text-body-secondary py-5">Sin análisis registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if history|length > 1 %}
+                    <div class="card-footer small text-body-secondary">
+                        Comparar dos análisis muestra si el conteo creció; una caída suele indicar un problema de recuperación, no menos citas.
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <section class="card shadow-sm">
+                <div class="card-header"><h2 class="h6 mb-0">Ficha</h2></div>
+                <div class="card-body">
+                    <form method="post" action="{{ path('app_researcher_field', {slug: researcher.slug}) }}">
+                        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                        <label for="field" class="form-label small fw-semibold">Área de investigación</label>
+                        <input type="text" class="form-control form-control-sm" id="field" name="field"
+                               value="{{ researcher.field }}" maxlength="255"
+                               placeholder="Topología · Teoría de conjuntos">
+                        <div class="form-text">OpenAlex no aporta este dato; se captura aquí.</div>
+
+                        <hr class="my-3">
+
+                        <div class="small fw-semibold mb-1">Identificadores</div>
+                        <p class="form-text mt-0">
+                            Fijan a qué perfil se consulta cada fuente. En blanco, SIAB intenta
+                            deducirlos del ORCID o del nombre. <b>Un identificador equivocado
+                            atribuye en silencio los trabajos de otra persona</b>: si no estás
+                            seguro, déjalo vacío.
+                        </p>
+
+                        <label for="orcid" class="form-label small">ORCID</label>
+                        <input type="text" class="form-control form-control-sm" id="orcid" name="orcid"
+                               value="{{ researcher.orcid }}" maxlength="37"
+                               pattern="(https?://orcid\.org/)?\d{4}-\d{4}-\d{4}-\d{3}[\dXx]"
+                               placeholder="0000-0002-1825-0097">
+                        <div class="form-text mb-2">
+                            {% if researcher.orcid %}
+                                Se tomó de OpenAlex o se capturó aquí. Puede pegarse la URL completa.
+                            {% else %}
+                                OpenAlex no trae ORCID para esta persona; captúralo aquí si lo tiene.
+                                Puede pegarse la URL completa.
+                            {% endif %}
+                        </div>
+
+                        <label for="scopus_id" class="form-label small">Scopus AU-ID</label>
+                        <input type="text" class="form-control form-control-sm" id="scopus_id" name="scopus_id"
+                               value="{{ researcher.scopusId }}" maxlength="32" placeholder="6602738988">
+                        <div class="form-text mb-2">Más fiable que el ORCID para Scopus.</div>
+
+                        <label for="zbmath_code" class="form-label small">Código de autor zbMATH</label>
+                        <input type="text" class="form-control form-control-sm" id="zbmath_code" name="zbmath_code"
+                               value="{{ researcher.zbmathCode }}" maxlength="64" placeholder="hrusak.michael">
+                        <div class="form-text mb-2">Evita la búsqueda por nombre, que es ambigua.</div>
+
+                        <label for="inspire_recid" class="form-label small">Recid de INSPIRE-HEP</label>
+                        <input type="text" class="form-control form-control-sm" id="inspire_recid" name="inspire_recid"
+                               value="{{ researcher.inspireRecid }}" maxlength="32" placeholder="—">
+                        <div class="form-text">
+                            Sólo para autores de física de altas energías. La mayoría de los
+                            matemáticos no tienen perfil: dejarlo vacío es lo correcto.
+                        </div>
+
+                        <button class="btn btn-sm btn-primary mt-3" type="submit">Guardar</button>
+                    </form>
+                </div>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between gap-2">
+                        <span class="text-body-secondary">Obras (OpenAlex)</span>
+                        <span class="num">{{ researcher.worksCount ?? '—' }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between gap-2">
+                        <span class="text-body-secondary">Análisis</span>
+                        <span class="num">{{ history|length }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between gap-2">
+                        <span class="text-body-secondary">En el padrón desde</span>
+                        <span>{{ researcher.createdAt|fecha }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between gap-2">
+                        <span class="text-body-secondary">Actualizado</span>
+                        <span>{{ researcher.updatedAt|fecha }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between gap-2">
+                        <span class="text-body-secondary">Slug</span>
+                        <span class="font-monospace" style="font-size: .6875rem;">{{ researcher.slug }}</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</main>
+{% endblock %}

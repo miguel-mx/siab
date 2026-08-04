@@ -1,0 +1,243 @@
+{% extends 'base.html.twig' %}
+
+{% set failed = run.status == constant('App\\Enum\\RunStatus::FAILED') %}
+{% set pending = not run.status.isTerminal %}
+{% set total = run.totalCitations %}
+
+{% block title %}Análisis {{ run.slug }} · SIAB{% endblock %}
+
+{% block head_extra %}
+    {# While a worker is on it — analysis or report — let the page pull the new state
+       by itself. Reports take ~1 min, so they are polled less eagerly. #}
+    {% if pending %}
+        <meta http-equiv="refresh" content="5">
+    {% elseif run.reportPending %}
+        <meta http-equiv="refresh" content="10">
+    {% endif %}
+{% endblock %}
+
+{% block body %}
+<main class="container-xl py-4">
+    {{ include('_flashes.html.twig') }}
+
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+        <div>
+            <div class="eyebrow">
+                <a href="{{ path('app_dashboard') }}">Panel</a> · Análisis #{{ run.id }}
+            </div>
+            <h1 class="siab-brand fs-3 mb-0">
+                <a class="text-decoration-none text-body" href="{{ path('app_researcher_show', {slug: run.researcher.slug}) }}">{{ run.researcher.displayName }}</a>
+            </h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_dashboard') }}">Volver al panel</a>
+            <a class="btn btn-primary" href="{{ path('app_analysis_new', {q: run.researcher.orcid ?? run.researcher.openalexId}) }}">+ Nuevo análisis</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            {{ include('_run_status.html.twig', {status: run.status, flags: run.flags}) }}
+            {# Label over value rather than beside it: as one grey run-on line these
+               five facts had no reading order and nothing to scan by. #}
+            <div class="metastrip">
+                <span><span class="metastrip-k">Solicitado</span><span class="metastrip-v">{{ run.createdAt|fecha('d MMM y, HH:mm') }}</span></span>
+                {% if run.finishedAt %}
+                    <span><span class="metastrip-k">Terminado</span><span class="metastrip-v">{{ run.finishedAt|fecha('d MMM y, HH:mm') }}</span></span>
+                    {% if run.startedAt %}
+                        <span><span class="metastrip-k">Duración</span><span class="metastrip-v num">{{ run.finishedAt.timestamp - run.startedAt.timestamp }} s</span></span>
+                    {% endif %}
+                {% endif %}
+                <span><span class="metastrip-k">Fuentes</span><span class="metastrip-v">{{ run.sourceLabels|join(', ') }}</span></span>
+                {% if run.owner %}
+                    <span><span class="metastrip-k">Solicitó</span><span class="metastrip-v">{{ run.owner.displayName ?? run.owner.email }}</span></span>
+                {% endif %}
+                {% if run.runTimestamp %}
+                    <span><span class="metastrip-k">Motor</span><span class="metastrip-v font-monospace" title="Marca de tiempo del motor">{{ run.runTimestamp }}</span></span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if pending %}
+            <div class="card-footer small text-body-secondary d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                    {% if run.status == constant('App\\Enum\\RunStatus::QUEUED') %}
+                        En cola, a la espera de empezar.
+                        {% if is_granted('ROLE_ADMIN') %}
+                            Necesita un worker consumiendo la cola
+                            (<code>php bin/console messenger:consume async</code>).
+                        {% endif %}
+                    {% elseif progress %}
+                        {# The engine reports phase keys; the Spanish is ours, as with
+                           the service panel. Unknown keys fall back to the key itself
+                           rather than to silence, so a new stage is visible at once. #}
+                        {% set phases = {
+                            'starting': 'Preparando el análisis',
+                            'works': 'Recuperando la lista de obras',
+                            'citing': 'Recuperando las citas de cada obra',
+                            'classify': 'Clasificando las citas (Tipo A / B / autocitas)',
+                            'validate': 'Comprobando los totales',
+                            'report': 'Redactando el informe',
+                        } %}
+                        <b>{{ phases[progress.phase]|default(progress.phase) }}</b>
+                        {%- if progress.total > 0 %} · {{ progress.done }} de {{ progress.total }} obras{% endif -%}
+                        {%- if progress.detail %} · {{ progress.detail }}{% endif -%}.
+                        {% if typical_seconds %}
+                            Lo habitual son unos
+                            {{ typical_seconds < 90 ? typical_seconds ~ ' s' : (typical_seconds // 60) ~ ' min' }}.
+                        {% endif %}
+                    {% else %}
+                        El motor está procesando este análisis
+                        {%- if run.startedAt %}, {{ run.startedAt|hace|replace({'hace ': 'lleva '}) }}{% endif -%}.
+                        {% if typical_seconds %}
+                            Lo habitual son unos
+                            {{ typical_seconds < 90 ? typical_seconds ~ ' s' : (typical_seconds // 60) ~ ' min' }}.
+                        {% endif %}
+                    {% endif %}
+                    Esta página se actualiza cada 5 s.
+                </div>
+
+                <form method="post" action="{{ path('app_run_cancel', {slug: run.slug}) }}"
+                      onsubmit="return confirm('¿Cancelar este análisis? No se podrá reanudar; habría que lanzarlo de nuevo.')">
+                    <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Cancelar análisis</button>
+                </form>
+            </div>
+        {% endif %}
+
+        {% if progress and progress.percent is not null %}
+            <div class="px-3 pb-3">
+                <div class="progress" style="height: .5rem;" role="progressbar"
+                     aria-label="Avance del análisis" aria-valuenow="{{ progress.percent }}"
+                     aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         style="width: {{ progress.percent }}%"></div>
+                </div>
+                <div class="small text-body-secondary mt-1 num">
+                    {{ progress.percent }} % · {{ progress.elapsed_seconds|round }} s transcurridos
+                </div>
+            </div>
+        {% endif %}
+
+        {% if run.stalled %}
+            <div class="card-footer small text-warning-emphasis">
+                <b>Lleva {{ run.startedAt|hace|replace({'hace ': ''}) }} sin terminar.</b>
+                Un análisis normal tarda minutos, así que algo ha ido mal. Cancélalo y
+                vuelve a lanzarlo; si se repite, avisa a un administrador.
+                {% if is_granted('ROLE_ADMIN') %}
+                    <span class="d-block mt-1">
+                        Probablemente nadie esté consumiendo la cola, o el worker murió a medias.
+                    </span>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    {% if run.archived %}
+        <div class="alert alert-secondary d-flex flex-wrap align-items-center justify-content-between gap-2" role="alert">
+            <div>
+                <b>Análisis archivado</b> el {{ run.discardedAt|fecha('d MMM y, HH:mm') }}{% if archived_by %},
+                por {{ archived_by.actorLabel }}{% endif %}.
+                No aparece en el historial ni cuenta en las cifras del panel, pero se conserva
+                entero: lo que se publicó a partir de él sigue siendo reproducible.
+            </div>
+            {% if is_granted('ROLE_ADMIN') %}
+                <form method="post" action="{{ path('app_run_archive', {slug: run.slug}) }}">
+                    <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                    <input type="hidden" name="restaurar" value="1">
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Restaurar</button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if failed %}
+        <div class="alert alert-danger" role="alert">
+            <b>El análisis falló.</b> {{ run.errorMessage|default('Sin detalle registrado.') }}
+        </div>
+    {% endif %}
+
+    {% if run.flags %}
+        <div class="alert alert-warning" role="alert">
+            <b>{{ run.flags|length }} {{ run.flags|length == 1 ? 'aviso de validación' : 'avisos de validación' }}</b>
+            <div class="small">
+                El análisis está completo; estos avisos afectan a cómo se leen sus cifras.
+            </div>
+            <ul class="mb-0 mt-2 small">
+                {% for flag in run.flags %}<li>{{ flag }}</li>{% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if run.notes %}
+        {# Provenance, not problems: collapsed, and deliberately not an alert — these
+           appear on every healthy run and must not read as something to fix. #}
+        <details class="card shadow-sm mb-4">
+            <summary class="card-body py-2 small text-body-secondary" style="cursor: pointer;">
+                Detalles de la recuperación ({{ run.notes|length }})
+            </summary>
+            <ul class="list-group list-group-flush small">
+                {% for note in run.notes %}
+                    <li class="list-group-item text-body-secondary">{{ note }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+    {% endif %}
+
+    {% if run.status.hasFigures %}
+        {{ include('_kpi_tiles.html.twig', {figures: run, total: total}) }}
+
+        {% if total > 0 %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+                        <span class="kpi-label mb-0">Reparto de las {{ total }} citas</span>
+                        {# The three counts read left to right in the same order as the
+                           bar beneath them, each in its own ink. #}
+                        <span class="metric-split">
+                            <span class="text-type-a"><span class="k">A</span> <span class="n">{{ run.totalTypeA }}</span></span>
+                            <span class="text-type-b"><span class="k">B</span> <span class="n">{{ run.totalTypeB }}</span></span>
+                            <span class="text-type-self"><span class="k">AUTO</span> <span class="n">{{ run.totalSelf }}</span></span>
+                        </span>
+                    </div>
+                    {{ include('_meter.html.twig', {run: run, total: total, tall: true}) }}
+                    <div class="mt-3">{{ include('_legend.html.twig', {full: true}) }}</div>
+                </div>
+            </div>
+        {% endif %}
+
+        {{ include('analysis/_report.html.twig') }}
+
+        {{ include('analysis/_articles.html.twig') }}
+    {% endif %}
+
+    {% if is_granted('ROLE_ADMIN') and (run.archivable or run.deletable) %}
+        <section class="card shadow-sm mt-4 border-danger-subtle">
+            <div class="card-header"><h2 class="h6 mb-0">Administración del análisis</h2></div>
+            <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+                {% if run.archivable %}
+                    <div class="small text-body-secondary">
+                        <b class="text-body">Archivar</b> lo saca del historial y de las cifras del panel
+                        (total de análisis, análisis del mes, % Tipo A) sin borrar nada. Reversible.
+                    </div>
+                    <form method="post" action="{{ path('app_run_archive', {slug: run.slug}) }}"
+                          onsubmit="return confirm('¿Archivar este análisis? Dejará de contar en las cifras del panel. Puedes restaurarlo después.')">
+                        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Archivar análisis</button>
+                    </form>
+                {% else %}
+                    <div class="small text-body-secondary">
+                        <b class="text-body">Eliminar</b> borra este intento y sus datos para siempre.
+                        No produjo cifras, así que no cuenta en ningún indicador y nada cambiará al quitarlo.
+                    </div>
+                    <form method="post" action="{{ path('app_run_delete', {slug: run.slug}) }}"
+                          onsubmit="return confirm('¿Eliminar definitivamente este análisis? No se puede deshacer.')">
+                        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                        <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar definitivamente</button>
+                    </form>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'bundles/TwigBundle/Exception/_error_layout.html.twig' %}
+
+{% block title %}Sin permiso{% endblock %}
+{% block code %}403{% endblock %}
+{% block heading %}Tu cuenta no puede ver esto{% endblock %}
+
+{% block body %}
+    <p>La página existe, pero está reservada a administradores.</p>
+    <p class="muted">
+        La configuración del motor, las cuentas y el registro de actividad son de
+        administración. Si necesitas entrar, pídeselo a un administrador de SIAB.
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <a class="btn primary" href="/">Ir al panel</a>
+    <a class="btn" href="/analisis">Historial de análisis</a>
+{% endblock %}

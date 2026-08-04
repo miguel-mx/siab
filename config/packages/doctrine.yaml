@@ -20,6 +20,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+        filters:
+            # Archived analyses disappear from every query, including aggregates.
+            # Turned off deliberately where they should be visible — see the filter.
+            archived_runs:
+                class: App\Doctrine\ArchivedRunFilter
+                enabled: true
 
 when@test:
     doctrine:

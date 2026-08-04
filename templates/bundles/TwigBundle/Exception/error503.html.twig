@@ -1,0 +1,12 @@
+{% extends 'bundles/TwigBundle/Exception/_error_layout.html.twig' %}
+
+{% block title %}Servicio no disponible{% endblock %}
+{% block code %}503{% endblock %}
+{% block heading %}SIAB no está disponible ahora mismo{% endblock %}
+
+{% block body %}
+    <p>Probablemente sea una tarea de mantenimiento y dure poco.</p>
+    <p class="muted">
+        Los análisis en cola no se pierden: se ejecutan cuando el servicio vuelva.
+    </p>
+{% endblock %}

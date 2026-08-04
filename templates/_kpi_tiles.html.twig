@@ -1,0 +1,35 @@
+{# The five figures of a run, as tiles. Params: figures (AnalysisRun), total (int).
+   Shared by the analysis detail and the researcher's "cifras vigentes" — the two
+   screens had the same block copied, and only one of them ever got fixed. #}
+{% set tiles = [
+    {label: 'Artículos', value: figures.totalArticles, tone: null},
+    {label: 'Citas totales', value: total, tone: null},
+    {label: 'Tipo A', value: figures.totalTypeA, tone: 'a'},
+    {label: 'Tipo B', value: figures.totalTypeB, tone: 'b'},
+    {label: 'Autocitas', value: figures.totalSelf, tone: 'self'},
+] %}
+
+<div class="row g-3 mb-4">
+    {% for tile in tiles %}
+        <div class="col-6 col-lg">
+            <div class="card h-100 shadow-sm {{ tile.tone ? 'kpi-' ~ tile.tone }}">
+                <div class="card-body">
+                    <div class="kpi-label">
+                        {% if tile.tone %}<span class="swatch bg-type-{{ tile.tone == 'self' ? 'self' : tile.tone }}"></span>{% endif %}{{ tile.label }}
+                    </div>
+                    <div class="siab-kpi-value">{{ tile.value }}</div>
+
+                    {% if tile.tone %}
+                        {% set pct = total > 0 ? (tile.value / total * 100)|round : null %}
+                        {# The share as a bar as well as a figure: five tiles of digits
+                           gave no sense of proportion, which is the whole question. #}
+                        <div class="splitbar kpi-share" role="presentation">
+                            {% if pct %}<span class="bg-type-{{ tile.tone }}" style="width: {{ (tile.value / total * 100)|round(2) }}%"></span>{% endif %}
+                        </div>
+                        <div class="kpi-foot">{{ pct is not null ? pct ~ '% del total' : '—' }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
