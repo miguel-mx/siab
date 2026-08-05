@@ -4,7 +4,10 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% block title %}SIAB · Análisis de Citas{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.1em%22 font-size=%22104%22>📊</text></svg>">
+        {# The A/B/self meter, the one mark every screen already shows. A file rather
+           than the skeleton's inline emoji: it is a real asset now, so it gets
+           fingerprinted and cached like the rest. #}
+        <link rel="icon" href="{{ asset('images/favicon.svg') }}" type="image/svg+xml">
 
         {% block head_extra %}{% endblock %}
 

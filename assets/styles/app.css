@@ -315,6 +315,20 @@ a.srcbadge:hover { color: var(--siab-a-ink); border-color: var(--siab-a-mark); }
 @media (prefers-reduced-motion: reduce) { .expander .chev { transition: none; } }
 details[open] > .expander .chev { transform: rotate(90deg); }
 
+/*
+ * A <summary> doubling as a card header or an alert's first line. The whole strip
+ * is the hit target rather than just the chevron, which at 10 px would be a
+ * tap-sized miss on a phone; the chevron only says which way the section will go.
+ */
+.foldhead {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; cursor: pointer; list-style: none;
+}
+.foldhead::-webkit-details-marker { display: none; }
+.foldhead .chev { flex: none; color: var(--bs-secondary-color); transition: transform .15s ease; }
+details[open] > .foldhead .chev { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .foldhead .chev { transition: none; } }
+
 /* Level 3 — the focal metric, given real size. */
 .artrow-metrics { text-align: right; }
 .metric-num {

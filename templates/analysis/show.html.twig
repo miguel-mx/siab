@@ -31,6 +31,12 @@
         </div>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary" href="{{ path('app_dashboard') }}">Volver al panel</a>
+            {% if run.status.hasFigures %}
+                {# Up here with the other actions rather than beside the article list:
+                   the workbook covers the whole run, not the page of articles on screen. #}
+                <a class="btn btn-outline-secondary" href="{{ path('app_run_export', {slug: run.slug}) }}"
+                   title="Descargar el análisis completo en Excel para revisarlo">Exportar a Excel</a>
+            {% endif %}
             <a class="btn btn-primary" href="{{ path('app_analysis_new', {q: run.researcher.orcid ?? run.researcher.openalexId}) }}">+ Nuevo análisis</a>
         </div>
     </div>
@@ -158,15 +164,24 @@
     {% endif %}
 
     {% if run.flags %}
-        <div class="alert alert-warning" role="alert">
-            <b>{{ run.flags|length }} {{ run.flags|length == 1 ? 'aviso de validación' : 'avisos de validación' }}</b>
-            <div class="small">
-                El análisis está completo; estos avisos afectan a cómo se leen sus cifras.
-            </div>
+        {# Foldable, but open: these qualify the very figures underneath them, so
+           they are not something to be met already put away. A run with a dozen
+           avisos is the one case where the list buries the page, and that is the
+           run whose owner most needs to fold it — hence the choice, not the state. #}
+        <details class="alert alert-warning" role="alert" data-fold="avisos" open>
+            <summary class="foldhead">
+                <span>
+                    <b>{{ run.flags|length }} {{ run.flags|length == 1 ? 'aviso de validación' : 'avisos de validación' }}</b>
+                    <span class="small d-block">
+                        El análisis está completo; estos avisos afectan a cómo se leen sus cifras.
+                    </span>
+                </span>
+                {{ include('_chevron.html.twig') }}
+            </summary>
             <ul class="mb-0 mt-2 small">
                 {% for flag in run.flags %}<li>{{ flag }}</li>{% endfor %}
             </ul>
-        </div>
+        </details>
     {% endif %}
 
     {% if run.notes %}

@@ -13,6 +13,7 @@ use App\Enum\AnalysisSource;
 use App\Enum\ArticleSort;
 use App\Enum\AuditAction;
 use App\Enum\RunStatus;
+use App\Export\RunWorkbook;
 use App\Form\Model\NewAnalysisInput;
 use App\Form\NewAnalysisType;
 use App\Health\PreflightCheck;
@@ -25,11 +26,14 @@ use App\Service\AnalysisRunner;
 use App\Service\ResearcherRegistry;
 use App\Service\SourceCatalog;
 use App\Service\StalledRunReaper;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -285,6 +289,64 @@ final class AnalysisController extends AbstractController
         }
 
         return $this->render('analysis/_citing_works.html.twig', ['article' => $article]);
+    }
+
+    /**
+     * The run as a workbook, for checking it away from the screen.
+     *
+     * Validation is what this is for: the librarian goes down the citations sheet,
+     * follows each DOI and records whether the A/B/autocita call is right. That is a
+     * sorting-and-filtering job, which is why it is a spreadsheet and not the
+     * narrative report — and why the sheet ships with empty columns to write in.
+     *
+     * Archived runs export too. Archiving hides a run from the aggregates, but the
+     * reason they are kept at all is that figures already published from them have
+     * to stay reproducible, and that is exactly when someone asks for the workbook.
+     */
+    #[Route(
+        '/analisis/{slug}/exportar',
+        name: 'app_run_export',
+        requirements: ['slug' => '[a-z0-9-]+'],
+        methods: ['GET'],
+    )]
+    public function export(
+        string $slug,
+        AnalysisRunRepository $runs,
+        ArticleRepository $articles,
+        RunWorkbook $workbook,
+    ): Response {
+        $run = $runs->findBySlugIncludingArchived($slug) ?? throw $this->createNotFoundException();
+
+        // Nothing to check in a run that produced no figures, and a workbook of empty
+        // sheets is worse than the message saying so.
+        if (!$run->getStatus()->hasFigures()) {
+            $this->addFlash('error', 'Este análisis no tiene cifras que exportar.');
+
+            return $this->redirectToRoute('app_run_show', ['slug' => $run->getSlug()]);
+        }
+
+        $book = $workbook->build($run, $articles->findAllForRunWithCitations($run));
+
+        // Streamed: the writer emits the file as it goes, so a prolific author's run
+        // (~1,470 citation rows) never has to exist twice, once built and once copied
+        // into a response body.
+        $response = new StreamedResponse(static function () use ($book): void {
+            (new Xlsx($book))->save('php://output');
+            // The sheets hold every citation of the run; without this they stay in
+            // memory for the rest of the request.
+            $book->disconnectWorksheets();
+        });
+
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $response->headers->set('Content-Disposition', HeaderUtils::makeDisposition(
+            HeaderUtils::DISPOSITION_ATTACHMENT,
+            $workbook->filename($run),
+        ));
+        // The figures are fixed once the run finishes, but a stale copy of someone's
+        // citation record is not worth the bandwidth it saves.
+        $response->headers->set('Cache-Control', 'no-store, private');
+
+        return $response;
     }
 
     /**

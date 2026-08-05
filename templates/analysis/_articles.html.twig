@@ -107,9 +107,7 @@
                             {# Fetched on first open rather than shipped with the page. #}
                             <details data-citas-url="{{ path('app_run_article_citations', {slug: run.slug, id: article.id}) }}">
                                 <summary class="expander">
-                                    <svg class="chev" width="10" height="10" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                                        <path d="M5.5 2.5 11 8l-5.5 5.5-1-1L9 8 4.5 3.5z"/>
-                                    </svg>
+                                    {{ include('_chevron.html.twig') }}
                                     Ver {{ citas }} {{ citas == 1 ? 'cita' : 'citas' }}
                                 </summary>
                                 <div data-citas-slot>

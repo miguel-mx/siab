@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SIAB">
+    <!--
+      The A/B/self meter, as the tab icon.
+
+      Same three hues and same stacking order as _meter.html.twig — the
+      `--siab-*-mark` tokens, which are the ones meant to carry contrast with no
+      text on them. Bands rather than a letterform because a favicon is read at
+      16 px, where serif detail collapses but a block of colour does not.
+
+      The proportions are a real run's (36 / 42 / 22), not thirds: an even split
+      would draw a bar chart of nothing, and the whole point of the mark is that
+      an analysis has a shape.
+
+      Values are literal, not var(--siab-a-mark): an SVG loaded as a favicon is
+      its own document and never sees the page's stylesheet. The light-theme
+      greys are used deliberately — the icon sits on browser chrome, not on the
+      page, and #9ca3af holds up on a dark tab strip where #6b7280 would sink.
+    -->
+    <clipPath id="tile">
+        <rect width="64" height="64" rx="12"/>
+    </clipPath>
+    <g clip-path="url(#tile)">
+        <rect width="64" height="23" fill="#3b82f6"/>
+        <rect y="23" width="64" height="27" fill="#14b8a6"/>
+        <rect y="50" width="64" height="14" fill="#9ca3af"/>
+    </g>
+</svg>

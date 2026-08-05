@@ -78,6 +78,62 @@ document.addEventListener('toggle', (event) => {
 }, true);
 
 /*
+ * Foldable sections ([data-fold]) remember whether they were left open.
+ *
+ * Not a nicety here: a run page reloads itself every 5 s while the analysis runs
+ * and every 10 s while a report is being written (the meta refresh in
+ * analysis/show.html.twig), so a section folded away would spring back open a few
+ * seconds later. Remembering the choice is what makes folding work at all on the
+ * one page that has it.
+ */
+const FOLD_KEY = 'siab.folds';
+
+function readFolds() {
+    try {
+        return JSON.parse(localStorage.getItem(FOLD_KEY)) ?? {};
+    } catch {
+        // Corrupt or unavailable storage is not worth breaking the page over; the
+        // sections just open in the state the server rendered them.
+        return {};
+    }
+}
+
+function applyFolds() {
+    const folds = readFolds();
+    // A link straight to a section (the history's "ver informe" points at #informe)
+    // must not land on a fold the reader closed last week: the fragment wins.
+    const targeted = decodeURIComponent(window.location.hash.slice(1));
+
+    document.querySelectorAll('details[data-fold]').forEach((details) => {
+        if (details.id && details.id === targeted) {
+            details.open = true;
+
+            return;
+        }
+
+        const remembered = folds[details.dataset.fold];
+        if (remembered !== undefined) {
+            details.open = remembered;
+        }
+    });
+}
+
+applyFolds();
+document.addEventListener('turbo:load', applyFolds);
+
+document.addEventListener('toggle', (event) => {
+    const details = event.target;
+
+    if (!details.matches?.('details[data-fold]')) {
+        return;
+    }
+
+    const folds = readFolds();
+    folds[details.dataset.fold] = details.open;
+    localStorage.setItem(FOLD_KEY, JSON.stringify(folds));
+}, true);
+
+/*
  * Buttons that take a while (starting the engine waits for its /health): show the
  * wait instead of leaving the page looking unresponsive. Turbo re-enables the
  * button itself when the response arrives.

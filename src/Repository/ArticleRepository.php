@@ -52,6 +52,25 @@ class ArticleRepository extends ServiceEntityRepository
     }
 
     /**
+     * A run's articles with every citing work attached, most-cited first.
+     *
+     * The one place the whole graph is wanted at once: the XLSX export writes each
+     * citation as its own row, so there is nothing to defer. Fetch-joined because
+     * the alternative is one query per article — ~165 of them for a prolific
+     * author, against a page that already holds them all in memory anyway.
+     *
+     * @return Article[]
+     */
+    public function findAllForRunWithCitations(AnalysisRun $run): array
+    {
+        $qb = $this->scoped($this->createQueryBuilder('a'), $run, null)
+            ->addSelect('cw')
+            ->leftJoin('a.citingWorks', 'cw');
+
+        return ArticleSort::CITED->applyTo($qb)->getQuery()->getResult();
+    }
+
+    /**
      * How many citing works each of these articles has, for the "Ver N citas"
      * labels — one grouped query for the page instead of loading the citations
      * themselves just to count them.

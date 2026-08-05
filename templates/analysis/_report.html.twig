@@ -1,28 +1,32 @@
 {# Narrative report: shows it, or offers to write it, or reports why it failed.
-   Generation is queued (the model takes ~1 min), so this also covers the wait. #}
-<section class="card shadow-sm mb-4" id="informe">
-    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+   Generation is queued (the model takes ~1 min), so this also covers the wait.
+
+   Foldable because it is by far the longest block on the page — a page whose
+   other purpose is the figures above it. It opens by default and stays wherever
+   it was left; see the [data-fold] handler in app.js.
+
+   The language picker and the generate button moved from the header to the
+   footer: the header is the <summary> now, and a form nested inside one cannot be
+   operated at all — every click on the select would toggle the fold instead. #}
+{% set has_report = run.report is not empty %}
+
+<details class="card shadow-sm mb-4" id="informe" data-fold="informe" open>
+    <summary class="card-header foldhead">
         <h2 class="h6 mb-0">Informe narrativo</h2>
 
-        {% if run.reportPending %}
-            <span class="small text-body-secondary d-inline-flex align-items-center gap-2">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                Redactando desde {{ run.reportRequestedAt|hace }}…
-            </span>
-        {% else %}
-            <form method="post" action="{{ path('app_run_report', {slug: run.slug}) }}"
-                  class="d-flex align-items-center gap-2">
-                <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
-                <select name="report_language" class="form-select form-select-sm w-auto" aria-label="Idioma del informe">
-                    <option value="es"{{ run.reportLanguage == 'es' ? ' selected' : '' }}>Español</option>
-                    <option value="en"{{ run.reportLanguage == 'en' ? ' selected' : '' }}>Inglés</option>
-                </select>
-                <button class="btn btn-sm {{ run.report ? 'btn-outline-secondary' : 'btn-primary' }}" type="submit">
-                    {{ run.report ? 'Regenerar' : 'Generar informe' }}
-                </button>
-            </form>
-        {% endif %}
-    </div>
+        <span class="d-inline-flex align-items-center gap-2">
+            {% if run.reportPending %}
+                <span class="small text-body-secondary d-inline-flex align-items-center gap-2">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    Redactando desde {{ run.reportRequestedAt|hace }}…
+                </span>
+            {% elseif has_report %}
+                {# What is behind the fold, so it need not be opened to find out. #}
+                <span class="small text-body-secondary">{{ run.reportLanguage == 'en' ? 'Inglés' : 'Español' }}</span>
+            {% endif %}
+            {{ include('_chevron.html.twig') }}
+        </span>
+    </summary>
 
     {% if run.reportError %}
         <div class="card-body pb-0">
@@ -42,15 +46,11 @@
         </div>
     {% endif %}
 
-    {% if run.report %}
+    {% if has_report %}
         <div class="card-body">
             {# Stored as Markdown (the model's exact output); rendered here with raw
                HTML stripped — see config/packages/twig_extra.yaml. #}
             <div class="report-body">{{ run.report|markdown_to_html }}</div>
-        </div>
-        <div class="card-footer small text-body-secondary">
-            {{ run.reportLanguage == 'en' ? 'Inglés' : 'Español' }} ·
-            redactado por el modelo a partir de cifras ya calculadas en Python; el modelo no aporta datos bibliográficos.
         </div>
     {% elseif run.reportPending %}
         <div class="card-body text-body-secondary">
@@ -68,4 +68,32 @@
             {% endif %}
         </div>
     {% endif %}
-</section>
+
+    {# Nothing to put here while a first report is being written: no provenance to
+       state yet, and asking for another one mid-flight is what isReportPending
+       exists to prevent. #}
+    {% if has_report or not run.reportPending %}
+        <div class="card-footer small text-body-secondary d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <span>
+                {% if has_report %}
+                    {{ run.reportLanguage == 'en' ? 'Inglés' : 'Español' }} ·
+                    redactado por el modelo a partir de cifras ya calculadas en Python; el modelo no aporta datos bibliográficos.
+                {% endif %}
+            </span>
+
+            {% if not run.reportPending %}
+                <form method="post" action="{{ path('app_run_report', {slug: run.slug}) }}"
+                      class="d-flex align-items-center gap-2">
+                    <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('submit') }}">
+                    <select name="report_language" class="form-select form-select-sm w-auto" aria-label="Idioma del informe">
+                        <option value="es"{{ run.reportLanguage == 'es' ? ' selected' : '' }}>Español</option>
+                        <option value="en"{{ run.reportLanguage == 'en' ? ' selected' : '' }}>Inglés</option>
+                    </select>
+                    <button class="btn btn-sm {{ run.report ? 'btn-outline-secondary' : 'btn-primary' }}" type="submit">
+                        {{ run.report ? 'Regenerar' : 'Generar informe' }}
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+</details>
