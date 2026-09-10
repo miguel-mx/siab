@@ -6,8 +6,19 @@
         <title>{% block title %}SIAB · Análisis de Citas{% endblock %}</title>
         {# The A/B/self meter, the one mark every screen already shows. A file rather
            than the skeleton's inline emoji: it is a real asset now, so it gets
-           fingerprinted and cached like the rest. #}
+           fingerprinted and cached like the rest.
+
+           The other two are not alternatives to it, they are the cases the SVG
+           cannot cover. Both live at the document root rather than in the asset
+           map, because both are fetched by clients that never read this <head>:
+           a browser asks for /favicon.ico on its own (and, with FallbackResource,
+           a missing one is answered by Symfony's 404 page, not by Apache's), and
+           iOS asks for /apple-touch-icon.png when a page is added to the home
+           screen. A fingerprinted path is unreachable to a request nobody
+           rendered a template for. #}
+        <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
         <link rel="icon" href="{{ asset('images/favicon.svg') }}" type="image/svg+xml">
+        <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 
         {% block head_extra %}{% endblock %}
 

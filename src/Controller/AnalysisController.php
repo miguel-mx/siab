@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Analysis\RunFigures;
 use App\Engine\CitationEngineClient;
 use App\Engine\CitationEngineException;
 use App\Engine\Dto\ResolveResult;
@@ -217,16 +218,28 @@ final class AnalysisController extends AbstractController
             $reaper->sweepThrottled();
         }
 
-        // The run's totals come from its own denormalized columns, not from the
-        // articles on screen, so paging them changes no figure on this page.
+        // Paging and searching change no figure on this page: the totals come from
+        // the run's own denormalized columns. Hiding preprints is the one exception,
+        // and it is handled explicitly below rather than falling out of the query.
         $articleSort = ArticleSort::from_($request->query->get('orden'));
         $articleSearch = trim((string) $request->query->get('buscar'));
-        $articleCount = $run->getStatus()->hasFigures() ? $articles->countForRun($run, $articleSearch) : 0;
+        // A preprint and its published version are separate OpenAlex works with
+        // separate DOIs, so the engine cannot merge them and the same paper is listed
+        // twice. Hiding the preprints is how someone reads the record as publications
+        // rather than as submissions; it is a view over the stored run, so it changes
+        // no figure the run was saved with.
+        $withoutPreprints = $request->query->getBoolean('sinpreprints');
+        $hasFigures = $run->getStatus()->hasFigures();
+        $articleCount = $hasFigures ? $articles->countForRun($run, $articleSearch, $withoutPreprints) : 0;
         $articlePages = max(1, (int) ceil($articleCount / self::ARTICLES_PER_PAGE));
         $articlePage = min(max(1, $request->query->getInt('art', 1)), $articlePages);
         $pageArticles = $articleCount > 0
-            ? $articles->findPageForRun($run, $articlePage, self::ARTICLES_PER_PAGE, $articleSort, $articleSearch)
+            ? $articles->findPageForRun($run, $articlePage, self::ARTICLES_PER_PAGE, $articleSort, $articleSearch, $withoutPreprints)
             : [];
+        // Per repository, so the line under the list can say what left rather than
+        // only how many did. Empty for a run with no preprints, which is what hides
+        // the whole control on runs where it would do nothing.
+        $preprintCounts = $hasFigures ? $articles->preprintCountsByRepository($run) : [];
 
         return $this->render('analysis/show.html.twig', [
             'run' => $run,
@@ -241,6 +254,16 @@ final class AnalysisController extends AbstractController
             'article_pages' => $articlePages,
             'article_sort' => $articleSort,
             'article_search' => $articleSearch,
+            'without_preprints' => $withoutPreprints,
+            'preprint_counts' => $preprintCounts,
+            'preprint_total' => array_sum($preprintCounts),
+            // The tiles and the meter describe whatever the list describes: with
+            // preprints hidden they are re-derived from the visible articles, so the
+            // page cannot show "166 artículos" above a list that says "148 de 166".
+            // The run's stored totals are untouched and remain what the panel counts.
+            'figures' => $hasFigures
+                ? $articles->figuresForRun($run, $withoutPreprints)
+                : RunFigures::stored($run),
             // The run's own total, so a search can say "12 de 165" rather than
             // silently redefining how many articles the analysis found.
             'article_total' => $run->getTotalArticles(),
@@ -310,6 +333,7 @@ final class AnalysisController extends AbstractController
         methods: ['GET'],
     )]
     public function export(
+        Request $request,
         string $slug,
         AnalysisRunRepository $runs,
         ArticleRepository $articles,
@@ -325,7 +349,18 @@ final class AnalysisController extends AbstractController
             return $this->redirectToRoute('app_run_show', ['slug' => $run->getSlug()]);
         }
 
-        $book = $workbook->build($run, $articles->findAllForRunWithCitations($run));
+        // The export link on the run page carries the filter, so the workbook holds
+        // the same set of articles the person exporting it was looking at. The
+        // summary sheet says which of the two it is; a spreadsheet that quietly
+        // disagreed with the screen is exactly what nobody could afford to check.
+        $withoutPreprints = $request->query->getBoolean('sinpreprints');
+
+        $book = $workbook->build(
+            $run,
+            $articles->findAllForRunWithCitations($run, $withoutPreprints),
+            $articles->figuresForRun($run, $withoutPreprints),
+            $withoutPreprints,
+        );
 
         // Streamed: the writer emits the file as it goes, so a prolific author's run
         // (~1,470 citation rows) never has to exist twice, once built and once copied
@@ -340,7 +375,7 @@ final class AnalysisController extends AbstractController
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', HeaderUtils::makeDisposition(
             HeaderUtils::DISPOSITION_ATTACHMENT,
-            $workbook->filename($run),
+            $workbook->filename($run, $withoutPreprints),
         ));
         // The figures are fixed once the run finishes, but a stale copy of someone's
         // citation record is not worth the bandwidth it saves.

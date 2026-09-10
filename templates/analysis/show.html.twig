@@ -2,7 +2,10 @@
 
 {% set failed = run.status == constant('App\\Enum\\RunStatus::FAILED') %}
 {% set pending = not run.status.isTerminal %}
-{% set total = run.totalCitations %}
+{# The figures the page renders: the run's stored totals normally, and totals
+   re-derived from the visible articles when preprints are hidden. Both expose the
+   same getters, so the shared tile/meter partials take either without knowing. #}
+{% set total = figures.totalCitations %}
 
 {% block title %}Análisis {{ run.slug }} · SIAB{% endblock %}
 
@@ -33,9 +36,14 @@
             <a class="btn btn-outline-secondary" href="{{ path('app_dashboard') }}">Volver al panel</a>
             {% if run.status.hasFigures %}
                 {# Up here with the other actions rather than beside the article list:
-                   the workbook covers the whole run, not the page of articles on screen. #}
-                <a class="btn btn-outline-secondary" href="{{ path('app_run_export', {slug: run.slug}) }}"
-                   title="Descargar el análisis completo en Excel para revisarlo">Exportar a Excel</a>
+                   the workbook covers every article, not the page of them on screen.
+                   It does follow the preprint filter, though — that decides which
+                   articles the run is being read as, not how many fit on a page. #}
+                <a class="btn btn-outline-secondary"
+                   href="{{ path('app_run_export', {slug: run.slug, sinpreprints: without_preprints ? 1 : null}) }}"
+                   title="{{ without_preprints
+                       ? 'Descargar en Excel los artículos sin preprints, tal como se ven aquí'
+                       : 'Descargar el análisis completo en Excel para revisarlo' }}">Exportar a Excel</a>
             {% endif %}
             <a class="btn btn-primary" href="{{ path('app_analysis_new', {q: run.researcher.orcid ?? run.researcher.openalexId}) }}">+ Nuevo análisis</a>
         </div>
@@ -200,7 +208,23 @@
     {% endif %}
 
     {% if run.status.hasFigures %}
-        {{ include('_kpi_tiles.html.twig', {figures: run, total: total}) }}
+        {% if without_preprints and preprint_total > 0 %}
+            {# The tiles below are not the run's stored figures, and saying so is not
+               optional: these numbers get copied into evaluation paperwork. #}
+            <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2" role="status">
+                <div>
+                    <b>Cifras sin preprints.</b>
+                    Se excluyen {{ preprint_total }}
+                    {{ preprint_total == 1 ? 'trabajo alojado en un repositorio' : 'trabajos alojados en repositorios' }}.
+                    El análisis completo registró {{ run.totalArticles }} artículos y
+                    {{ run.totalCitations }} citas.
+                </div>
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="{{ path('app_run_show', {slug: run.slug, buscar: article_search ?: null, orden: article_sort.value}) }}#articulos">Ver el análisis completo</a>
+            </div>
+        {% endif %}
+
+        {{ include('_kpi_tiles.html.twig', {figures: figures, total: total}) }}
 
         {% if total > 0 %}
             <div class="card shadow-sm mb-4">
@@ -210,12 +234,12 @@
                         {# The three counts read left to right in the same order as the
                            bar beneath them, each in its own ink. #}
                         <span class="metric-split">
-                            <span class="text-type-a"><span class="k">A</span> <span class="n">{{ run.totalTypeA }}</span></span>
-                            <span class="text-type-b"><span class="k">B</span> <span class="n">{{ run.totalTypeB }}</span></span>
-                            <span class="text-type-self"><span class="k">AUTO</span> <span class="n">{{ run.totalSelf }}</span></span>
+                            <span class="text-type-a"><span class="k">A</span> <span class="n">{{ figures.totalTypeA }}</span></span>
+                            <span class="text-type-b"><span class="k">B</span> <span class="n">{{ figures.totalTypeB }}</span></span>
+                            <span class="text-type-self"><span class="k">AUTO</span> <span class="n">{{ figures.totalSelf }}</span></span>
                         </span>
                     </div>
-                    {{ include('_meter.html.twig', {run: run, total: total, tall: true}) }}
+                    {{ include('_meter.html.twig', {run: figures, total: total, tall: true}) }}
                     <div class="mt-3">{{ include('_legend.html.twig', {full: true}) }}</div>
                 </div>
             </div>

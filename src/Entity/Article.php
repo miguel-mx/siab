@@ -15,8 +15,14 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
 #[ORM\Table(name: 'article')]
 #[ORM\Index(name: 'idx_article_run', columns: ['analysis_run_id'])]
+// The run's article list can be read with preprints hidden, which filters on
+// work_type within one run — so the index carries both columns, not just the run.
+#[ORM\Index(name: 'idx_article_run_type', columns: ['analysis_run_id', 'work_type'])]
 class Article
 {
+    /** The engine's value for a preprint; the filter and the entity must agree on it. */
+    public const TYPE_PREPRINT = 'preprint';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -68,6 +74,19 @@ class Article
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $authors = null;
+
+    /**
+     * The engine's normalised work type — 'article', 'preprint', 'book-chapter',
+     * 'review'. Null for records that reached us from a source which reports none
+     * (everything but OpenAlex), and that null means *unclassified*: such a work is
+     * never hidden by the preprint filter, because we were never told what it is.
+     */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $workType = null;
+
+    /** Where a preprint is hosted — arXiv, bioRxiv, HAL. Null for everything else. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $repository = null;
 
     // ── Per-source citation counts ────────────────────────────────────────────
     #[ORM\Column(options: ['default' => 0])]
@@ -297,6 +316,40 @@ class Article
         $this->authors = $authors;
 
         return $this;
+    }
+
+    public function getWorkType(): ?string
+    {
+        return $this->workType;
+    }
+
+    public function setWorkType(?string $workType): static
+    {
+        $this->workType = $workType;
+
+        return $this;
+    }
+
+    public function getRepository(): ?string
+    {
+        return $this->repository;
+    }
+
+    public function setRepository(?string $repository): static
+    {
+        $this->repository = $repository;
+
+        return $this;
+    }
+
+    /**
+     * Deliberately an exact match on the one type the engine promotes records to,
+     * and not "anything that is not an article": a book chapter is not a preprint,
+     * and neither is a work whose type nobody reported.
+     */
+    public function isPreprint(): bool
+    {
+        return $this->workType === self::TYPE_PREPRINT;
     }
 
     public function getOpenalexCitedByCount(): int

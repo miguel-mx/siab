@@ -2,6 +2,7 @@
 
 namespace App\Tests\Export;
 
+use App\Analysis\RunFigures;
 use App\Entity\AnalysisRun;
 use App\Entity\Article;
 use App\Entity\CitingWork;
@@ -93,14 +94,30 @@ final class RunWorkbookTest extends TestCase
         return $run;
     }
 
-    /** Build, write and read back — the sheets as Excel would present them. */
-    private function reload(AnalysisRun $run): Spreadsheet
-    {
+    /**
+     * Build, write and read back — the sheets as Excel would present them.
+     *
+     * $articles defaults to the run's own, which is what the controller passes for an
+     * unfiltered export; a caller that wants the preprint-free workbook passes the
+     * narrowed list and the figures over it, exactly as the controller does.
+     */
+    private function reload(
+        AnalysisRun $run,
+        ?array $articles = null,
+        ?RunFigures $figures = null,
+        bool $withoutPreprints = false,
+    ): Spreadsheet {
         $workbook = new RunWorkbook(new AppExtension());
         $path = tempnam(sys_get_temp_dir(), 'siab').'.xlsx';
 
         try {
-            (new XlsxWriter($workbook->build($run, $run->getArticles()->toArray())))->save($path);
+            $book = $workbook->build(
+                $run,
+                $articles ?? $run->getArticles()->toArray(),
+                $figures,
+                $withoutPreprints,
+            );
+            (new XlsxWriter($book))->save($path);
 
             return (new XlsxReader())->load($path);
         } finally {
@@ -229,8 +246,8 @@ final class RunWorkbookTest extends TestCase
         $articles = $this->reload($this->completedRun())->getSheetByName('Artículos');
 
         self::assertNotNull($articles);
-        self::assertSame(4, $articles->getCell('N2')->getValue(), 'zbMATH informó 4 citas');
-        self::assertSame('—', $articles->getCell('L2')->getValue(), 'Scopus no fue consultado');
+        self::assertSame(4, $articles->getCell('O2')->getValue(), 'zbMATH informó 4 citas');
+        self::assertSame('—', $articles->getCell('M2')->getValue(), 'Scopus no fue consultado');
     }
 
     public function testKeepsTheRunsOwnTotalsAndTheirShareOfTheWhole(): void
@@ -296,4 +313,94 @@ final class RunWorkbookTest extends TestCase
             (new RunWorkbook(new AppExtension()))->filename($this->completedRun()),
         );
     }
+
+    /**
+     * A preprint row says so, with its repository. This is what a reviewer matches
+     * against the published version listed a few rows away — the two are separate
+     * OpenAlex works with separate DOIs, so the sheet holds both.
+     */
+    public function testNamesThePreprintAndItsRepository(): void
+    {
+        $run = $this->completedRun();
+        $run->addArticle((new Article())
+            ->setTitle('Malykhin\'s problem (preprint)')
+            ->setYear(2013)
+            ->setDoi('10.48550/arXiv.1301.01234')
+            ->setWorkType('preprint')
+            ->setRepository('arXiv'));
+
+        $articles = $this->reload($run)->getSheetByName('Artículos');
+
+        self::assertNotNull($articles);
+        self::assertSame('Preprint (arXiv)', $articles->getCell('G4')->getValue());
+        // A work OpenAlex typed plainly keeps that type; one nobody typed stays blank
+        // rather than being guessed at.
+        self::assertSame('—', $articles->getCell('G2')->getValue());
+    }
+
+    /**
+     * The preprint-free workbook must say that it is one. It is read away from the
+     * screen that produced it, so nothing else would tell the reader that these
+     * totals cover part of the run — and the run's own figures travel with it.
+     */
+    public function testAFilteredExportDeclaresItsScopeAndCarriesBothTotals(): void
+    {
+        $run = $this->completedRun();
+        $kept = [$run->getArticles()->first()];
+
+        $summary = $this->reload(
+            $run,
+            $kept,
+            new RunFigures(1, 6, 3, 1),
+            withoutPreprints: true,
+        )->getSheetByName('Resumen');
+
+        self::assertNotNull($summary);
+
+        // By label, like the totals test above: rangeToArray formats as it reads and
+        // would turn every count into a string.
+        $value = [];
+        foreach ($summary->getRowIterator() as $row) {
+            $number = $row->getRowIndex();
+            $value[(string) $summary->getCell("A{$number}")->getValue()] = $summary->getCell("B{$number}")->getValue();
+        }
+
+        self::assertStringContainsString('Sin preprints', (string) $value['Alcance']);
+        self::assertSame(1, $value['Artículos'], 'los artículos visibles');
+        self::assertSame(2, $value['Artículos del análisis completo'], 'los del run entero');
+        self::assertSame(10, $value['Citas del análisis completo']);
+    }
+
+    /** An unfiltered export says so too, and never mentions a second set of totals. */
+    public function testAnUnfilteredExportSaysItIsComplete(): void
+    {
+        $summary = $this->reload($this->completedRun())->getSheetByName('Resumen');
+
+        self::assertNotNull($summary);
+
+        // By label, like the totals test above: rangeToArray formats as it reads and
+        // would turn every count into a string.
+        $value = [];
+        foreach ($summary->getRowIterator() as $row) {
+            $number = $row->getRowIndex();
+            $value[(string) $summary->getCell("A{$number}")->getValue()] = $summary->getCell("B{$number}")->getValue();
+        }
+
+        self::assertStringContainsString('completo', (string) $value['Alcance']);
+        self::assertArrayNotHasKey('Artículos del análisis completo', $value);
+    }
+
+    /** The two exports of one run must not land on the same file name. */
+    public function testTheFilteredWorkbookGetsItsOwnFilename(): void
+    {
+        $workbook = new RunWorkbook(new AppExtension());
+        $run = $this->completedRun();
+
+        self::assertSame('siab-michael-hrusak-20260729-2354.xlsx', $workbook->filename($run));
+        self::assertSame(
+            'siab-michael-hrusak-20260729-2354-sin-preprints.xlsx',
+            $workbook->filename($run, withoutPreprints: true),
+        );
+    }
+
 }

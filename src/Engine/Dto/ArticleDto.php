@@ -27,6 +27,12 @@ final readonly class ArticleDto
         public ?int $year,
         public ?string $journal,
         public ?string $authors,
+        // "article", "preprint", "book-chapter"… as the engine normalises it. Null
+        // where the record came from a source that reports no type at all, which is
+        // every source but OpenAlex — absent means unclassified, not "not a preprint".
+        public ?string $workType,
+        // The hosting repository, set for preprints only: arXiv, bioRxiv, HAL.
+        public ?string $repository,
         public int $openalexCitedByCount,
         public ?int $scopusCitedByCount,
         public ?int $wosCitedByCount,
@@ -54,6 +60,8 @@ final readonly class ArticleDto
             year: isset($d['year']) ? (int) $d['year'] : null,
             journal: $d['journal'] ?? null,
             authors: $d['authors'] ?? null,
+            workType: $d['work_type'] ?? null,
+            repository: $d['repository'] ?? null,
             openalexCitedByCount: (int) ($d['openalex_cited_by_count'] ?? 0),
             scopusCitedByCount: isset($d['scopus_cited_by_count']) ? (int) $d['scopus_cited_by_count'] : null,
             wosCitedByCount: isset($d['wos_cited_by_count']) ? (int) $d['wos_cited_by_count'] : null,

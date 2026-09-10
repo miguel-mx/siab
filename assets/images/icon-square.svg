@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SIAB">
+    <!--
+      favicon.svg without the rounded clip: the square, fully opaque source that
+      public/apple-touch-icon.png is rendered from.
+
+      Both differences are iOS requirements, not taste. iOS applies its own corner
+      mask to a home-screen icon, so rounding it here would round it twice; and it
+      composites the icon on black, so any transparent pixel — the four corners a
+      clip path leaves behind — turns into a black notch.
+
+      Same three hues, same order and same run proportions as favicon.svg, which
+      carries the reasoning for all three. Keep the two files in step.
+
+          inkscape assets/images/icon-square.svg \
+              -w 180 -h 180 -o public/apple-touch-icon.png
+    -->
+    <rect width="64" height="23" fill="#3b82f6"/>
+    <rect y="23" width="64" height="27" fill="#14b8a6"/>
+    <rect y="50" width="64" height="14" fill="#9ca3af"/>
+</svg>

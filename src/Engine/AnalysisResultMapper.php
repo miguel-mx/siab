@@ -98,6 +98,8 @@ final class AnalysisResultMapper
             ->setYear($d->year)
             ->setJournal($d->journal)
             ->setAuthors($d->authors)
+            ->setWorkType(self::fit($d->workType, 32))
+            ->setRepository(self::fit($d->repository, 64))
             ->setOpenalexCitedByCount($d->openalexCitedByCount)
             ->setScopusCitedByCount($d->scopusCitedByCount)
             ->setWosCitedByCount($d->wosCitedByCount)

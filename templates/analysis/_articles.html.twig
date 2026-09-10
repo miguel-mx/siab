@@ -5,7 +5,7 @@
             <h2 class="h6 mb-0">
                 Artículos
                 <span class="text-body-secondary fw-normal">
-                    {%- if article_search %} · {{ article_count }} de {{ article_total }}
+                    {%- if article_search or without_preprints %} · {{ article_count }} de {{ article_total }}
                     {%- else %} · {{ article_count }}{% endif -%}
                 </span>
             </h2>
@@ -32,15 +32,49 @@
                     {% endfor %}
                 </select>
             </div>
+            {# Only where it would do something. On a run with no preprints — most of
+               them, in mathematics — an always-present checkbox that changes nothing
+               is just one more control to read past. #}
+            {% if preprint_total > 0 %}
+                <div class="col-auto">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" value="1"
+                               name="sinpreprints" id="sinpreprints"
+                               {{ without_preprints ? 'checked' }}>
+                        <label class="form-check-label small" for="sinpreprints"
+                               title="Oculta los trabajos alojados en repositorios (arXiv, bioRxiv…) y recalcula las cifras de arriba">
+                            Excluir preprints
+                        </label>
+                    </div>
+                </div>
+            {% endif %}
             <div class="col-auto">
                 <button class="btn btn-sm btn-outline-secondary" type="submit">Aplicar</button>
             </div>
-            {% if article_search or article_sort.value != 'citas' %}
+            {% if article_search or without_preprints or article_sort.value != 'citas' %}
                 <div class="col-auto">
                     <a class="btn btn-sm btn-link" href="{{ path('app_run_show', {slug: run.slug}) }}#articulos">Limpiar</a>
                 </div>
             {% endif %}
         </form>
+
+        {# What the filter is holding back, named. A count on its own ("18 ocultos")
+           tells nobody whether the right things left; the repositories do. #}
+        {% if preprint_total > 0 %}
+            <div class="small text-body-secondary mt-2">
+                {% set breakdown = [] %}
+                {% for repositorio, n in preprint_counts %}
+                    {% set breakdown = breakdown|merge([(repositorio ?: 'repositorio sin identificar') ~ ' ' ~ n]) %}
+                {% endfor %}
+                {% if without_preprints %}
+                    {{ preprint_total }} {{ preprint_total == 1 ? 'preprint oculto' : 'preprints ocultos' }}
+                {%- else %}
+                    Este análisis incluye {{ preprint_total }}
+                    {{ preprint_total == 1 ? 'preprint' : 'preprints' }}
+                {%- endif %}
+                ({{ breakdown|join(', ') }}).
+            </div>
+        {% endif %}
     </div>
 
     <div class="artlist">
@@ -64,6 +98,15 @@
                     <div class="art-meta">
                         {{ article.year ?? 's/f' }}{% if article.journal %} · <span class="journal">{{ article.journal }}</span>{% endif %}
                         {% if article.openalexId %} · <span class="oaid">{{ article.openalexId }}</span>{% endif %}
+                        {# Marked on the row, not only counted in the header: with the
+                           filter off, "which of these is the preprint" is the question
+                           someone has in front of a paper listed twice. #}
+                        {% if article.isPreprint %}
+                            <span class="badge text-bg-secondary fw-normal align-middle"
+                                  title="Trabajo alojado en un repositorio. Su versión publicada, si la hay, es una obra aparte en OpenAlex y se lista por separado.">
+                                Preprint{% if article.repository %} · {{ article.repository }}{% endif %}
+                            </span>
+                        {% endif %}
                     </div>
 
                     {# Stored as one semicolon-separated string (the citing works keep a
@@ -159,7 +202,11 @@
         {% else %}
             <div class="text-center text-body-secondary py-5">
                 {% if article_search %}
-                    Ningún artículo de este análisis coincide con «{{ article_search }}».
+                    Ningún artículo de este análisis coincide con «{{ article_search }}»
+                    {%- if without_preprints %}, con los preprints excluidos{% endif %}.
+                    <a href="{{ path('app_run_show', {slug: run.slug}) }}#articulos">Ver todos</a>.
+                {% elseif without_preprints %}
+                    Todos los trabajos de este análisis son preprints.
                     <a href="{{ path('app_run_show', {slug: run.slug}) }}#articulos">Ver todos</a>.
                 {% else %}
                     Este análisis no registró artículos.
@@ -177,7 +224,12 @@
                and the anchor keeps the jump at the table instead of the top. #}
             <nav aria-label="Paginación de artículos">
                 <ul class="pagination pagination-sm mb-0">
-                    {% set filtros = {slug: run.slug, buscar: article_search ?: null, orden: article_sort.value} %}
+                    {% set filtros = {
+                        slug: run.slug,
+                        buscar: article_search ?: null,
+                        orden: article_sort.value,
+                        sinpreprints: without_preprints ? 1 : null,
+                    } %}
                     <li class="page-item {{ article_page <= 1 ? 'disabled' }}">
                         <a class="page-link" href="{{ path('app_run_show', filtros|merge({art: article_page - 1})) }}#articulos">‹</a>
                     </li>

@@ -72,4 +72,46 @@ final class AnalysisResultMapperTest extends TestCase
         $first = $run->getArticles()->first();
         self::assertMatchesRegularExpression('/^W\d+$/', $first->getOpenalexId());
     }
+
+    /**
+     * The engine's work type and repository reach the entity, and drive isPreprint().
+     *
+     * Built by hand rather than from the fixture: that run predates the field, so
+     * every article in it carries no type — which is itself the case the last
+     * assertion pins down. An unreported type must never read as "not a preprint"
+     * in the sense of being *known* not to be one, but it must not be hidden either.
+     */
+    public function testCarriesTheWorkTypeAndRepository(): void
+    {
+        $run = new AnalysisRun();
+        (new AnalysisResultMapper())->apply($run, AnalysisResultDto::fromResponse([
+            'result' => [
+                'author' => ['openalex_id' => 'https://openalex.org/A1', 'display_name' => 'X', 'works_count' => 2],
+                'run_timestamp' => '20260904T000000Z',
+                'articles' => [
+                    [
+                        'title' => 'El preprint',
+                        'work_type' => 'preprint',
+                        'repository' => 'arXiv',
+                        'doi' => '10.48550/arXiv.2301.01234',
+                    ],
+                    ['title' => 'El artículo', 'work_type' => 'article'],
+                    ['title' => 'Sólo en zbMATH'],
+                ],
+            ],
+        ]));
+
+        [$preprint, $article, $untyped] = $run->getArticles()->toArray();
+
+        self::assertTrue($preprint->isPreprint());
+        self::assertSame('arXiv', $preprint->getRepository());
+
+        self::assertFalse($article->isPreprint());
+        self::assertNull($article->getRepository());
+
+        // No source but OpenAlex reports a type; unclassified is not "preprint".
+        self::assertNull($untyped->getWorkType());
+        self::assertFalse($untyped->isPreprint());
+    }
+
 }

@@ -2,6 +2,7 @@
 
 namespace App\Export;
 
+use App\Analysis\RunFigures;
 use App\Entity\AnalysisRun;
 use App\Entity\Article;
 use App\Entity\CitingWork;
@@ -57,24 +58,34 @@ final class RunWorkbook
      * The download's name. Built from the slug, which already says who and when,
      * so two exports of the same researcher never overwrite each other.
      */
-    public function filename(AnalysisRun $run): string
+    public function filename(AnalysisRun $run, bool $withoutPreprints = false): string
     {
-        return sprintf('siab-%s.xlsx', $run->getSlug());
+        // The suffix keeps the two exports of one run apart in a downloads folder,
+        // where the file name is all there is to tell them by.
+        return sprintf('siab-%s%s.xlsx', $run->getSlug(), $withoutPreprints ? '-sin-preprints' : '');
     }
 
     /**
-     * @param Article[] $articles the run's articles, with their citing works already
-     *                            loaded — see ArticleRepository::findAllForRunWithCitations
+     * @param Article[]  $articles         the run's articles, with their citing works already
+     *                                     loaded — see ArticleRepository::findAllForRunWithCitations
+     * @param RunFigures $figures          totals over exactly those articles
+     * @param bool       $withoutPreprints whether preprints were left out of both
      */
-    public function build(AnalysisRun $run, array $articles): Spreadsheet
-    {
+    public function build(
+        AnalysisRun $run,
+        array $articles,
+        ?RunFigures $figures = null,
+        bool $withoutPreprints = false,
+    ): Spreadsheet {
+        $figures ??= RunFigures::stored($run);
+
         $book = new Spreadsheet();
         $book->getProperties()
             ->setTitle(sprintf('Análisis de citas — %s', $run->getResearcher()->getDisplayName()))
             ->setSubject(sprintf('SIAB %s', (string) $run->getSlug()))
             ->setCreator('SIAB');
 
-        $this->summarySheet($book->getActiveSheet(), $run);
+        $this->summarySheet($book->getActiveSheet(), $run, $figures, $withoutPreprints);
         $this->articlesSheet($book->createSheet(), $articles);
         $this->citationsSheet($book->createSheet(), $articles);
         $this->issuesSheet($book->createSheet(), $run);
@@ -92,12 +103,16 @@ final class RunWorkbook
      * assembled under a wrong Scopus AU-ID are wrong in a way no amount of reading
      * the citation list will reveal.
      */
-    private function summarySheet(Worksheet $sheet, AnalysisRun $run): void
-    {
+    private function summarySheet(
+        Worksheet $sheet,
+        AnalysisRun $run,
+        RunFigures $figures,
+        bool $withoutPreprints,
+    ): void {
         $sheet->setTitle('Resumen');
 
         $researcher = $run->getResearcher();
-        $total = $run->getTotalCitations();
+        $total = $figures->getTotalCitations();
 
         $row = 1;
         $section = function (string $title) use ($sheet, &$row): void {
@@ -140,8 +155,21 @@ final class RunWorkbook
         ++$row;
 
         $section('Resultados');
-        $pair('Artículos', $run->getTotalArticles());
+        // Said outright, and before the numbers: a workbook is read away from the
+        // screen that produced it, so nothing else would tell the reader that these
+        // totals cover part of the run. The run's full figures follow, so a reviewer
+        // can always see what was left out and by how much.
+        $pair('Alcance', $withoutPreprints
+            ? 'Sin preprints — se excluyeron los trabajos alojados en repositorios (arXiv, bioRxiv…)'
+            : 'Análisis completo — incluye preprints');
+        $pair('Artículos', $figures->getTotalArticles());
         $pair('Citas contabilizadas', $total);
+
+        if ($withoutPreprints) {
+            $pair('Artículos del análisis completo', $run->getTotalArticles());
+            $pair('Citas del análisis completo', $run->getTotalCitations());
+        }
+
         ++$row;
 
         // The breakdown gets its own header row so the percentages have a column
@@ -150,9 +178,9 @@ final class RunWorkbook
         ++$row;
 
         foreach ([
-            self::CLASSIFICATIONS['A'] => $run->getTotalTypeA(),
-            self::CLASSIFICATIONS['B'] => $run->getTotalTypeB(),
-            self::CLASSIFICATIONS['self'] => $run->getTotalSelf(),
+            self::CLASSIFICATIONS['A'] => $figures->getTotalTypeA(),
+            self::CLASSIFICATIONS['B'] => $figures->getTotalTypeB(),
+            self::CLASSIFICATIONS['self'] => $figures->getTotalSelf(),
         ] as $label => $count) {
             $sheet->setCellValueExplicit("A{$row}", $label, DataType::TYPE_STRING);
             $sheet->setCellValue("B{$row}", $count);
@@ -182,7 +210,7 @@ final class RunWorkbook
         $sheet->setTitle('Artículos');
 
         $this->header($sheet, 1, [
-            '#', 'Título', 'Autores', 'Año', 'Revista o publicación', 'DOI',
+            '#', 'Título', 'Autores', 'Año', 'Revista o publicación', 'DOI', 'Tipo de trabajo',
             'Tipo A', 'Tipo B', 'Autocitas', 'Citas clasificadas',
             'OpenAlex', 'Scopus', 'Web of Science', 'zbMATH', 'INSPIRE-HEP',
             'ID de OpenAlex',
@@ -198,24 +226,25 @@ final class RunWorkbook
             $this->number($sheet, "D{$row}", $article->getYear());
             $this->text($sheet, "E{$row}", $article->getJournal());
             $this->doi($sheet, "F{$row}", $article->getDoi());
-            $sheet->setCellValue("G{$row}", $article->getCitesTypeA());
-            $sheet->setCellValue("H{$row}", $article->getCitesTypeB());
-            $sheet->setCellValue("I{$row}", $article->getCitesSelf());
-            $sheet->setCellValue("J{$row}", $classified);
-            $sheet->setCellValue("K{$row}", $article->getOpenalexCitedByCount());
-            $this->number($sheet, "L{$row}", $article->getScopusCitedByCount());
-            $this->number($sheet, "M{$row}", $article->getWosCitedByCount());
-            $this->number($sheet, "N{$row}", $article->getZbmathCitedByCount());
-            $this->number($sheet, "O{$row}", $article->getInspireCitedByCount());
-            $this->text($sheet, "P{$row}", $article->getOpenalexId());
+            $this->text($sheet, "G{$row}", $this->workTypeOf($article));
+            $sheet->setCellValue("H{$row}", $article->getCitesTypeA());
+            $sheet->setCellValue("I{$row}", $article->getCitesTypeB());
+            $sheet->setCellValue("J{$row}", $article->getCitesSelf());
+            $sheet->setCellValue("K{$row}", $classified);
+            $sheet->setCellValue("L{$row}", $article->getOpenalexCitedByCount());
+            $this->number($sheet, "M{$row}", $article->getScopusCitedByCount());
+            $this->number($sheet, "N{$row}", $article->getWosCitedByCount());
+            $this->number($sheet, "O{$row}", $article->getZbmathCitedByCount());
+            $this->number($sheet, "P{$row}", $article->getInspireCitedByCount());
+            $this->text($sheet, "Q{$row}", $article->getOpenalexId());
 
             ++$row;
         }
 
-        $this->finish($sheet, 'P', $row - 1, [
-            'A' => 5, 'B' => 64, 'C' => 34, 'D' => 7, 'E' => 30, 'F' => 30,
-            'G' => 8, 'H' => 8, 'I' => 10, 'J' => 12,
-            'K' => 10, 'L' => 10, 'M' => 14, 'N' => 10, 'O' => 12, 'P' => 16,
+        $this->finish($sheet, 'Q', $row - 1, [
+            'A' => 5, 'B' => 64, 'C' => 34, 'D' => 7, 'E' => 30, 'F' => 30, 'G' => 18,
+            'H' => 8, 'I' => 8, 'J' => 10, 'K' => 12,
+            'L' => 10, 'M' => 10, 'N' => 14, 'O' => 10, 'P' => 12, 'Q' => 16,
         ]);
 
         // Titles and journals are long; wrapping keeps a row readable without
@@ -281,6 +310,26 @@ final class RunWorkbook
         if ($last >= 2) {
             $sheet->setDataValidation(sprintf('J2:J%d', $last), $this->verdictDropdown());
         }
+    }
+
+    /**
+     * How a work's type reads in the sheet. A preprint says where it is hosted,
+     * because "preprint (arXiv)" is what a reviewer matches against the published
+     * version sitting a few rows away. An unreported type is left blank rather than
+     * guessed at: only OpenAlex tells us, and a row from Scopus or zbMATH alone
+     * genuinely has no answer.
+     */
+    private function workTypeOf(Article $article): ?string
+    {
+        if ($article->isPreprint()) {
+            $repository = $article->getRepository();
+
+            return $repository !== null && $repository !== ''
+                ? sprintf('Preprint (%s)', $repository)
+                : 'Preprint';
+        }
+
+        return $article->getWorkType();
     }
 
     /**

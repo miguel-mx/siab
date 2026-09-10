@@ -15,6 +15,13 @@
       its own document and never sees the page's stylesheet. The light-theme
       greys are used deliberately — the icon sits on browser chrome, not on the
       page, and #9ca3af holds up on a dark tab strip where #6b7280 would sink.
+
+      public/favicon.ico is generated from this file and is committed, so it only
+      needs regenerating when the mark changes:
+
+          for s in 16 32 48; do inkscape assets/images/favicon.svg \
+              -w $s -h $s -o /tmp/ico-$s.png; done
+          magick /tmp/ico-16.png /tmp/ico-32.png /tmp/ico-48.png public/favicon.ico
     -->
     <clipPath id="tile">
         <rect width="64" height="64" rx="12"/>

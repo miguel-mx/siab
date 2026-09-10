@@ -3,6 +3,11 @@ framework:
         # The paths to make available to the asset mapper.
         paths:
             - assets/
+        # icon-square.svg is a source for public/apple-touch-icon.png, never
+        # served itself; publishing it would only put a second, near-identical
+        # mark in public/assets/ for no one to request.
+        excluded_patterns:
+            - '*/assets/images/icon-square.svg'
         missing_import_mode: strict
 
 when@prod:
