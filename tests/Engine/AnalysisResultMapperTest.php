@@ -12,6 +12,12 @@ use PHPUnit\Framework\TestCase;
  * /analyze response for Daniel Juan-Pineda (tests/Fixtures/analyze_pineda.json).
  * Proves the independently re-derived per-citing-work A/B/self labels reconcile
  * with the engine's per-article counts.
+ *
+ * The fixture's cites_type_a / cites_type_b were recomputed when Type B became a
+ * per-article rule (an author of the cited work, as Rizoma defines it, instead of
+ * any co-author of the researcher): 33 citations by co-authors of *other* papers
+ * moved from B to A, so the run reads 146/11/68 instead of 113/44/68. Citing
+ * works, author ids and self-citations are untouched.
  */
 final class AnalysisResultMapperTest extends TestCase
 {
@@ -29,8 +35,8 @@ final class AnalysisResultMapperTest extends TestCase
         (new AnalysisResultMapper())->apply($run, $this->loadDto());
 
         self::assertSame(41, $run->getTotalArticles());
-        self::assertSame(113, $run->getTotalTypeA());
-        self::assertSame(44, $run->getTotalTypeB());
+        self::assertSame(146, $run->getTotalTypeA());
+        self::assertSame(11, $run->getTotalTypeB());
         self::assertSame(68, $run->getTotalSelf());
         self::assertSame([], $run->getFlags());
         self::assertNotNull($run->getRawSnapshot());
@@ -59,8 +65,8 @@ final class AnalysisResultMapperTest extends TestCase
             $labelA += $a; $labelB += $b; $labelSelf += $s;
         }
 
-        self::assertSame(113, $labelA);
-        self::assertSame(44, $labelB);
+        self::assertSame(146, $labelA);
+        self::assertSame(11, $labelB);
         self::assertSame(68, $labelSelf);
     }
 
@@ -71,6 +77,33 @@ final class AnalysisResultMapperTest extends TestCase
 
         $first = $run->getArticles()->first();
         self::assertMatchesRegularExpression('/^W\d+$/', $first->getOpenalexId());
+    }
+
+    /**
+     * Type B is decided against the authors of the cited article only. X (A2)
+     * co-wrote the first article but not the second, so X citing the second
+     * without the researcher is Type A there — even though X is a co-author.
+     */
+    public function testCoauthorOfAnotherArticleIsTypeA(): void
+    {
+        $citing = ['title' => 'Por X', 'author_ids' => ['https://openalex.org/A2', 'https://openalex.org/A9']];
+
+        $run = new AnalysisRun();
+        (new AnalysisResultMapper())->apply($run, AnalysisResultDto::fromResponse([
+            'result' => [
+                'author' => ['openalex_id' => 'https://openalex.org/A1', 'display_name' => 'X', 'works_count' => 2],
+                'run_timestamp' => '20261007T000000Z',
+                'articles' => [
+                    ['title' => 'Con X', 'coauthor_ids' => ['https://openalex.org/A2'], 'citing_works' => [$citing]],
+                    ['title' => 'Con Y', 'coauthor_ids' => ['https://openalex.org/A3'], 'citing_works' => [$citing]],
+                ],
+            ],
+        ]));
+
+        [$withX, $withY] = $run->getArticles()->toArray();
+
+        self::assertSame('B', $withX->getCitingWorks()->first()->getClassification());
+        self::assertSame('A', $withY->getCitingWorks()->first()->getClassification());
     }
 
     /**

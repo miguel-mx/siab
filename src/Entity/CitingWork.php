@@ -45,7 +45,7 @@ class CitingWork
     #[ORM\Column(length: 32, options: ['default' => 'openalex'])]
     private string $source = 'openalex';
 
-    /** 'A' (external), 'B' (co-author), or 'self'. Nullable until classified. */
+    /** 'A' (external), 'B' (an author of the cited article), or 'self'. Nullable until classified. */
     #[ORM\Column(length: 8, nullable: true)]
     private ?string $classification = null;
 

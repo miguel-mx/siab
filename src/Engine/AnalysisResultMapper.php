@@ -32,24 +32,19 @@ final class AnalysisResultMapper
             $run->setReport($dto->report);
         }
 
-        // The researcher's own OpenAlex id (URL form, as the engine emits it) and
-        // the union of co-authors across all their works — the classifier inputs.
+        // The researcher's own OpenAlex id (URL form, as the engine emits it). The
+        // other classifier input is per article: the authors of the cited work.
         $authorId = $dto->author->openalexId;
-        $allCoauthorIds = [];
-        foreach ($dto->articles as $articleDto) {
-            foreach ($articleDto->coauthorIds as $cid) {
-                $allCoauthorIds[$cid] = true;
-            }
-        }
 
         $totalA = $totalB = $totalSelf = 0;
 
         foreach ($dto->articles as $articleDto) {
             $article = $this->mapArticle($articleDto);
+            $citedCoauthorIds = array_fill_keys($articleDto->coauthorIds, true);
 
             foreach ($articleDto->citingWorks as $cwDto) {
                 $article->addCitingWork(
-                    $this->mapCitingWork($cwDto, $authorId, $allCoauthorIds)
+                    $this->mapCitingWork($cwDto, $authorId, $citedCoauthorIds)
                 );
             }
 
@@ -111,9 +106,9 @@ final class AnalysisResultMapper
     }
 
     /**
-     * @param array<string,true> $allCoauthorIds
+     * @param array<string,true> $citedCoauthorIds
      */
-    private function mapCitingWork(CitingWorkDto $d, string $authorId, array $allCoauthorIds): CitingWork
+    private function mapCitingWork(CitingWorkDto $d, string $authorId, array $citedCoauthorIds): CitingWork
     {
         return (new CitingWork())
             ->setOpenalexId(Researcher::normalizeOpenalexId($d->openalexId))
@@ -123,22 +118,27 @@ final class AnalysisResultMapper
             ->setYear($d->year)
             ->setAuthors($d->authors)
             ->setSource(self::fit($d->source, 32) ?? 'openalex')
-            ->setClassification($this->classify($d, $authorId, $allCoauthorIds));
+            ->setClassification($this->classify($d, $authorId, $citedCoauthorIds));
     }
 
     /**
      * Deterministic A/B/self, mirroring the engine's classify_citation_type.
-     * Precedence: self > B > A. Works with no author ids fall through to A.
+     * Precedence: self > B > A.
      *
-     * @param array<string,true> $allCoauthorIds
+     * As Rizoma defines it, B means an author *of the cited article* signs the
+     * citing work: `$citedCoauthorIds` are that one article's OpenAlex author ids,
+     * not everyone the researcher has published with. Citing works or cited
+     * articles with no author ids fall through to A.
+     *
+     * @param array<string,true> $citedCoauthorIds
      */
-    private function classify(CitingWorkDto $d, string $authorId, array $allCoauthorIds): string
+    private function classify(CitingWorkDto $d, string $authorId, array $citedCoauthorIds): string
     {
         if (in_array($authorId, $d->authorIds, true)) {
             return 'self';
         }
         foreach ($d->authorIds as $id) {
-            if (isset($allCoauthorIds[$id])) {
+            if (isset($citedCoauthorIds[$id])) {
                 return 'B';
             }
         }

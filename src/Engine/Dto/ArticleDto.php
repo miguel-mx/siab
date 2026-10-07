@@ -10,7 +10,7 @@ final readonly class ArticleDto
 {
     /**
      * @param CitingWorkDto[] $citingWorks
-     * @param string[]        $coauthorIds
+     * @param string[]        $coauthorIds OpenAlex author ids of this work, minus the researcher
      */
     public function __construct(
         public ?string $openalexId,
