@@ -19,6 +19,8 @@ final readonly class AnalysisResultDto
      * @param string[]     $flags  Findings that need a human
      * @param string[]     $notes  Context with nothing to act on
      * @param array        $raw    The undecoded-into-DTO `result` array, for the snapshot.
+     * @param string|null  $classificationRule Which A/B/self rule the engine applied;
+     *                                         null from engines that predate the field.
      */
     public function __construct(
         public AuthorDto $author,
@@ -28,6 +30,7 @@ final readonly class AnalysisResultDto
         public array $notes,
         public ?string $report,
         public array $raw,
+        public ?string $classificationRule = null,
     ) {
     }
 
@@ -46,6 +49,7 @@ final readonly class AnalysisResultDto
             notes: array_values(array_map('strval', $result['notes'] ?? [])),
             report: $envelope['report'] ?? null,
             raw: $result,
+            classificationRule: isset($result['classification_rule']) ? (string) $result['classification_rule'] : null,
         );
     }
 

@@ -23,6 +23,13 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'idx_run_discarded', columns: ['discarded_at'])]
 class AnalysisRun
 {
+    /**
+     * The engine's current A/B/self rule (classify.CLASSIFICATION_RULE): Type B when
+     * an author *of the cited article* signs the citing work, as Rizoma defines it.
+     * Figures from runs under a different rule are not compared with these.
+     */
+    public const CLASSIFICATION_RULE = 'rizoma-por-articulo';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -75,6 +82,14 @@ class AnalysisRun
 
     #[ORM\Column(options: ['default' => 0])]
     private int $totalSelf = 0;
+
+    /**
+     * Which rule the engine computed the A/B/self figures under. NULL on runs from
+     * before it was recorded: those counted as Type B a citation by a co-author of
+     * *any* of the researcher's works, so their B is higher and their A lower.
+     */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $classificationRule = null;
 
     /**
      * Findings the engine wants a person to act on — a rejected API key, a
@@ -323,6 +338,24 @@ class AnalysisRun
         $this->flags = $flags;
 
         return $this;
+    }
+
+    public function getClassificationRule(): ?string
+    {
+        return $this->classificationRule;
+    }
+
+    public function setClassificationRule(?string $classificationRule): static
+    {
+        $this->classificationRule = $classificationRule;
+
+        return $this;
+    }
+
+    /** Whether these A/B/self figures follow the rule current runs use. */
+    public function isClassifiedUnderCurrentRule(): bool
+    {
+        return $this->classificationRule === self::CLASSIFICATION_RULE;
     }
 
     public function getRawSnapshot(): ?array

@@ -126,7 +126,8 @@ final class AnalysisRunner
                     static fn (AnalysisSource $s): string => $s->value,
                     AnalysisSource::parseList($run->getSources()),
                 ),
-                comparison: $wantReport ? $this->previousFigures($run) : null,
+                // This run's figures will come out under the current rule.
+                comparison: $wantReport ? $this->previousFigures($run, AnalysisRun::CLASSIFICATION_RULE) : null,
             );
 
             // Someone may have cancelled while we were inside /analyze; that request
@@ -323,7 +324,7 @@ final class AnalysisRunner
             $response = $this->engine->report(
                 $snapshot,
                 $run->getReportLanguage(),
-                $this->previousFigures($run),
+                $this->previousFigures($run, $run->getClassificationRule()),
             );
             $report = trim((string) ($response['report'] ?? ''));
 
@@ -382,13 +383,19 @@ final class AnalysisRunner
      * time. Without this the report had nothing to compare and said so on every
      * run, for every researcher.
      *
+     * Also null when the previous run's figures were classified under another rule
+     * than `$rule` (the one the report's own figures follow): a drop in Type B that
+     * only reflects the rule change must not be written up as a change in the
+     * researcher's record. Omitting the comparison is what the prompt already
+     * handles — it then says nothing about earlier analyses.
+     *
      * @return array<string,mixed>|null
      */
-    private function previousFigures(AnalysisRun $run): ?array
+    private function previousFigures(AnalysisRun $run, ?string $rule): ?array
     {
         $previous = $this->runs->findPreviousCompletedForResearcher($run->getResearcher(), $run->getId());
 
-        if ($previous === null) {
+        if ($previous === null || $previous->getClassificationRule() !== $rule) {
             return null;
         }
 

@@ -208,6 +208,19 @@
     {% endif %}
 
     {% if run.status.hasFigures %}
+        {% if not run.classifiedUnderCurrentRule %}
+            {# These figures get copied into evaluation paperwork, and a run from
+               before the rule change overstates Type B against every newer one. #}
+            <div class="alert alert-warning" role="status">
+                <b>Tipo A / Tipo B calculados con la regla anterior.</b>
+                Este análisis contó como Tipo B cualquier cita firmada por un coautor de
+                <em>cualquier</em> trabajo del investigador; ahora solo cuenta si firma un autor
+                del trabajo citado, como define Rizoma. Su Tipo B puede ser mayor y su Tipo A
+                menor que en un análisis nuevo, y los informes de análisis nuevos no se comparan con él.
+                Vuelve a ejecutar el análisis para obtener las cifras vigentes.
+            </div>
+        {% endif %}
+
         {% if without_preprints and preprint_total > 0 %}
             {# The tiles below are not the run's stored figures, and saying so is not
                optional: these numbers get copied into evaluation paperwork. #}

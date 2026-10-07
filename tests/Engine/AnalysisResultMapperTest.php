@@ -80,6 +80,30 @@ final class AnalysisResultMapperTest extends TestCase
     }
 
     /**
+     * The fixture predates the stamp, so its run reads as classified under the
+     * earlier rule; a result that carries it is recorded as current.
+     */
+    public function testRecordsTheClassificationRule(): void
+    {
+        $old = new AnalysisRun();
+        (new AnalysisResultMapper())->apply($old, $this->loadDto());
+
+        self::assertNull($old->getClassificationRule());
+        self::assertFalse($old->isClassifiedUnderCurrentRule());
+
+        $new = new AnalysisRun();
+        (new AnalysisResultMapper())->apply($new, AnalysisResultDto::fromResponse([
+            'result' => [
+                'author' => ['openalex_id' => 'https://openalex.org/A1', 'display_name' => 'X', 'works_count' => 0],
+                'run_timestamp' => '20261007T000000Z',
+                'classification_rule' => AnalysisRun::CLASSIFICATION_RULE,
+            ],
+        ]));
+
+        self::assertTrue($new->isClassifiedUnderCurrentRule());
+    }
+
+    /**
      * Type B is decided against the authors of the cited article only. X (A2)
      * co-wrote the first article but not the second, so X citing the second
      * without the researcher is Type A there — even though X is a co-author.

@@ -28,6 +28,7 @@ final class AnalysisResultMapper
         $run->setFlags($dto->flags);
         $run->setNotes($dto->notes);
         $run->setRawSnapshot($dto->raw);
+        $run->setClassificationRule($dto->classificationRule);
         if ($dto->report !== null) {
             $run->setReport($dto->report);
         }
