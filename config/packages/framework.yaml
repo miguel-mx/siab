@@ -3,7 +3,13 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    # Own cookie name: in prod SIAB shares dev.matmor.unam.mx with other Symfony
+    # apps (control-activos, eventos) under the same php-fpm. With the default
+    # PHPSESSID they all load the *same* session, and since every firewall is
+    # called "main" they overwrite each other's login, target path and CSRF
+    # state ("Token CSRF no válido", redirects into /control-activos after login).
+    session:
+        name: SIAB_SESSID
 
     #esi: true
     #fragments: true

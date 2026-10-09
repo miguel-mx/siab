@@ -48,6 +48,8 @@ security:
             # password invalidates every remember-me cookie they were issued.
             remember_me:
                 secret: '%kernel.secret%'
+                # Not the shared default REMEMBERME; see session.name in framework.yaml.
+                name: SIAB_REMEMBERME
                 lifetime: 604800
                 path: /
                 secure: auto
